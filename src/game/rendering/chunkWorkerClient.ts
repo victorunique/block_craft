@@ -73,7 +73,7 @@ export class ChunkWorkerClient {
     });
   }
 
-  compileMesh(voxelBuffer: ArrayBuffer, cx: number, cy: number, cz: number): Promise<ChunkMeshData> {
+  compileMesh(voxelBuffer: ArrayBuffer, cx: number, cy: number, cz: number, worldSize: number): Promise<ChunkMeshData> {
     const id = this.genId();
     return new Promise((resolve, reject) => {
       this.pending.set(id, {
@@ -98,7 +98,7 @@ export class ChunkWorkerClient {
         },
         reject,
       });
-      const req: WorkerRequest = { id, type: 'COMPILE_CHUNK_MESH', payload: { chunkX: cx, chunkY: cy, chunkZ: cz, voxelBuffer } };
+      const req: WorkerRequest = { id, type: 'COMPILE_CHUNK_MESH', payload: { chunkX: cx, chunkY: cy, chunkZ: cz, voxelBuffer, worldSize } };
       this.worker.postMessage(req, [voxelBuffer]);
     });
   }
@@ -134,7 +134,7 @@ export class ChunkWorkerClient {
         const req: WorkerRequest = {
           id,
           type: 'COMPILE_CHUNK_DELTA_MESH',
-          payload: { chunkX: cx, chunkY: cy, chunkZ: cz, voxelBuffer: gen.voxelBuffer, deltaBuffer },
+          payload: { chunkX: cx, chunkY: cy, chunkZ: cz, voxelBuffer: gen.voxelBuffer, deltaBuffer, worldSize },
         };
         this.worker.postMessage(req, [gen.voxelBuffer, deltaBuffer]);
       } catch (err) {
@@ -146,6 +146,7 @@ export class ChunkWorkerClient {
   dispose() {
     this.worker.terminate();
     this.pending.clear();
+    clientInstance = null;
   }
 }
 

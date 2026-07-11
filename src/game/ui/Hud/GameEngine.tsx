@@ -46,14 +46,30 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
   const yawRef = useRef(0);
   const pitchRef = useRef(-0.15);
   const initializedRef = useRef(false);
+  const lastUpdateRef = useRef<number>(0);
+  const lastStoredPosRef = useRef<[number, number, number]>([playerPos[0], playerPos[1], playerPos[2]]);
 
   useEffect(() => {
-    camera.position.set(playerPos[0], playerPos[1] + 1.62, playerPos[2]);
-    camera.rotation.order = 'YXZ';
-    camera.rotation.y = yawRef.current;
-    camera.rotation.x = pitchRef.current;
-    initializedRef.current = true;
+    const dist = Math.hypot(
+      camera.position.x - playerPos[0],
+      (camera.position.y - 1.62) - playerPos[1],
+      camera.position.z - playerPos[2]
+    );
+    if (!initializedRef.current || dist > 2.0) {
+      camera.position.set(playerPos[0], playerPos[1] + 1.62, playerPos[2]);
+      camera.rotation.order = 'YXZ';
+      camera.rotation.y = yawRef.current;
+      camera.rotation.x = pitchRef.current;
+      initializedRef.current = true;
+      lastStoredPosRef.current = [playerPos[0], playerPos[1], playerPos[2]];
+    }
   }, [camera, playerPos[0], playerPos[1], playerPos[2]]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__bcCamera = camera;
+    }
+  }, [camera]);
 
   useEffect(() => {
     chunkManagerRef.current = chunkManager;
@@ -85,7 +101,8 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
       else s.setActiveSlot(Math.max(0, s.activeSlot - 1));
     };
     const onMouseDown = (e: MouseEvent) => {
-      const s = useGameStore.getState();
+      const isTesting = typeof navigator !== 'undefined' && navigator.webdriver;
+      if (document.pointerLockElement !== gl.domElement && !isTesting) return;
       if (e.button === 0) onLeftClick();
       if (e.button === 2) onRightClick();
     };
@@ -111,10 +128,12 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
     const cappedDt = Math.min(dt, 1 / 20);
 
     const cm = chunkManagerRef.current;
-    const { cx, cy, cz } = cm.worldToChunk(playerPos[0], playerPos[1], playerPos[2]);
+    const camFeetX = camera.position.x;
+    const camFeetY = camera.position.y - 1.62;
+    const camFeetZ = camera.position.z;
+    const { cx, cy, cz } = cm.worldToChunk(camFeetX, camFeetY, camFeetZ);
     const spawnChunk = cm.getChunk(cx, cy, cz);
     if (!spawnChunk || !spawnChunk.mesh) {
-      camera.position.set(playerPos[0], playerPos[1] + 1.62, playerPos[2]);
       return;
     }
 
@@ -136,8 +155,8 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
 
     const sinY = Math.sin(yawRef.current);
     const cosY = Math.cos(yawRef.current);
-    const moveX = (strafe * cosY + fwd * sinY) * speed;
-    const moveZ = (-strafe * sinY + fwd * cosY) * speed;
+    const moveX = (strafe * cosY - fwd * sinY) * speed;
+    const moveZ = (-strafe * sinY - fwd * cosY) * speed;
     velRef.current[0] = moveX;
     velRef.current[2] = moveZ;
 
@@ -152,10 +171,22 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
     lastJumpRef.current = jump;
     onGroundRef.current = result.isOnGround;
     camera.position.set(result.newPos[0], result.newPos[1] + 1.62, result.newPos[2]);
-    updatePlayerTransform(
-      [result.newPos[0], result.newPos[1], result.newPos[2]],
-      [pitchRef.current, yawRef.current],
-    );
+    velRef.current[0] = result.newVel[0];
+    velRef.current[1] = result.newVel[1];
+    velRef.current[2] = result.newVel[2];
+    const now = performance.now();
+    const posChanged =
+      Math.floor(result.newPos[0]) !== Math.floor(lastStoredPosRef.current[0]) ||
+      Math.floor(result.newPos[1]) !== Math.floor(lastStoredPosRef.current[1]) ||
+      Math.floor(result.newPos[2]) !== Math.floor(lastStoredPosRef.current[2]);
+    if (posChanged || now - lastUpdateRef.current > 150) {
+      lastUpdateRef.current = now;
+      lastStoredPosRef.current = result.newPos;
+      updatePlayerTransform(
+        [result.newPos[0], result.newPos[1], result.newPos[2]],
+        [pitchRef.current, yawRef.current],
+      );
+    }
 
     if (result.newPos[1] < -10) {
       const s = useGameStore.getState();
@@ -236,23 +267,36 @@ function dropForBlock(block: number): number {
 
 function WorldChunks({ chunkManager }: { chunkManager: ChunkManager }) {
   const [atlas, setAtlas] = useState<{ canvas: HTMLCanvasElement; texture: THREE.Texture } | null>(null);
-  const [tick, setTick] = useState(0);
+  const [chunks, setChunks] = useState<ChunkEntry[]>([]);
+  const tickRef = useRef(0);
+  const lastRevRef = useRef(0);
+
   useEffect(() => {
     void getAtlas().then((a) => setAtlas(a));
     if (typeof window !== 'undefined') {
       (window as any).__bcChunkManager = chunkManager;
     }
   }, []);
+
   useFrame(() => {
-    setTick((t) => (t + 1) % 60);
+    tickRef.current = (tickRef.current + 1) % 60;
+    const currentChunks = Array.from(chunkManager.entries()) as ChunkEntry[];
+    const currentLoaded = currentChunks.filter((c) => c.mesh).length;
+    const prevLoaded = chunks.filter((c) => c.mesh).length;
+
+    if (currentChunks.length !== chunks.length || currentLoaded !== prevLoaded || chunkManager.revision !== lastRevRef.current) {
+      lastRevRef.current = chunkManager.revision;
+      setChunks(currentChunks);
+    }
+
+    if (typeof window !== 'undefined' && tickRef.current === 0) {
+      const loaded = currentLoaded;
+      const total = currentChunks.length;
+      const cam = (window as any).__bcDebug;
+      if (cam) cam({ loaded, total, pos: useGameStore.getState().playerPos });
+    }
   });
-  const chunks = Array.from(chunkManager.entries()) as ChunkEntry[];
-  if (typeof window !== 'undefined' && tick === 0) {
-    const loaded = chunks.filter((c) => c.mesh).length;
-    const total = chunks.length;
-    const cam = (window as any).__bcDebug;
-    if (cam) cam({ loaded, total, pos: useGameStore.getState().playerPos });
-  }
+
   if (!atlas) return null;
   return (
     <>
@@ -282,9 +326,25 @@ function SunAndSky() {
 
 function ChunkUpdater({ chunkManager }: { chunkManager: ChunkManager }) {
   const playerPos = useGameStore((s) => s.playerPos);
+  const lastChunkPos = useRef<{ cx: number; cz: number } | null>(null);
+  const updating = useRef(false);
+
   useFrame(() => {
-    if (chunkManager.renderDistance > 0) {
-      void chunkManager.updateAroundPlayer(playerPos[0], playerPos[1], playerPos[2]);
+    if (chunkManager.renderDistance > 0 && !updating.current) {
+      const { cx, cz } = chunkManager.worldToChunk(playerPos[0], playerPos[1], playerPos[2]);
+      if (!lastChunkPos.current || lastChunkPos.current.cx !== cx || lastChunkPos.current.cz !== cz) {
+        updating.current = true;
+        chunkManager.updateAroundPlayer(playerPos[0], playerPos[1], playerPos[2])
+          .then(() => {
+            lastChunkPos.current = { cx, cz };
+          })
+          .catch((err) => {
+            console.error('updateAroundPlayer failed', err);
+          })
+          .finally(() => {
+            updating.current = false;
+          });
+      }
     }
   });
   return null;
@@ -340,8 +400,8 @@ export default function GameEngine({ chunkManager, spawner }: Props) {
   );
 }
 
-export function createChunkManagerForWorld(seed: number, worldSize: number, renderDistance: number) {
-  return new ChunkManager({ seed, worldSize, renderDistance, worker: getChunkWorker() });
+export function createChunkManagerForWorld(seed: number, worldSize: number, renderDistance: number, worldId?: string) {
+  return new ChunkManager({ seed, worldSize, renderDistance, worker: getChunkWorker(), worldId });
 }
 
 export function getSurfaceHeight(chunkManager: ChunkManager, x: number, z: number): number {

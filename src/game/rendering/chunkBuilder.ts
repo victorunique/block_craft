@@ -44,7 +44,9 @@ const FACE_UV_INDEX: Record<FaceKey, 'top' | 'side' | 'bottom'> = {
 function isFaceExposed(blockA: number, blockB: number): boolean {
   if (blockB === 0) return true;
   if (isLiquid(blockA) && isLiquid(blockB)) return false;
-  if (isTransparent(blockA) && !isLiquid(blockA) && isTransparent(blockB)) return true;
+  if (isTransparent(blockB) && !isLiquid(blockB)) return true;
+  if (isLiquid(blockB) && !isLiquid(blockA)) return true;
+  if (isTransparent(blockA) && !isLiquid(blockA) && !isTransparent(blockB)) return true;
   return false;
 }
 
@@ -91,8 +93,9 @@ function getNeighbor(voxels: Uint8Array, x: number, y: number, z: number, face: 
   return getVoxel(voxels, x + d[0], y + d[1], z + d[2]);
 }
 
-export function buildChunkMeshGreedy(voxels: Uint8Array, chunkX: number, chunkY: number, chunkZ: number): ChunkMeshBuffers {
+export function buildChunkMeshGreedy(voxels: Uint8Array, chunkX: number, chunkY: number, chunkZ: number, worldSize = 512): ChunkMeshBuffers {
   const state: BuilderState = { positions: [], normals: [], uvs: [], indices: [] };
+  const half = worldSize / 2;
 
   for (let y = 0; y < CHUNK_SIZE; y++) {
     for (let z = 0; z < CHUNK_SIZE; z++) {
@@ -103,9 +106,9 @@ export function buildChunkMeshGreedy(voxels: Uint8Array, chunkX: number, chunkY:
         const isCross = mapEntry && 'pattern' in mapEntry && (mapEntry.pattern === 'cross' || mapEntry.pattern === 'plant' || mapEntry.pattern === 'torch');
         if (isCross) continue;
 
-        const wx = chunkX * CHUNK_SIZE + x;
+        const wx = chunkX * CHUNK_SIZE - half + x;
         const wy = chunkY * CHUNK_SIZE + y;
-        const wz = chunkZ * CHUNK_SIZE + z;
+        const wz = chunkZ * CHUNK_SIZE - half + z;
 
         for (const face of Object.keys(FACES) as FaceKey[]) {
           const neighbor = getNeighbor(voxels, x, y, z, face);
@@ -121,17 +124,18 @@ export function buildChunkMeshGreedy(voxels: Uint8Array, chunkX: number, chunkY:
   return finalizeBuffers(state);
 }
 
-export function buildWaterChunkMesh(voxels: Uint8Array, chunkX: number, chunkY: number, chunkZ: number): ChunkMeshBuffers {
+export function buildWaterChunkMesh(voxels: Uint8Array, chunkX: number, chunkY: number, chunkZ: number, worldSize = 512): ChunkMeshBuffers {
   const state: BuilderState = { positions: [], normals: [], uvs: [], indices: [] };
   const waterUV = tileUV(0, 3);
+  const half = worldSize / 2;
   for (let y = 0; y < CHUNK_SIZE; y++) {
     for (let z = 0; z < CHUNK_SIZE; z++) {
       for (let x = 0; x < CHUNK_SIZE; x++) {
         const block = voxels[x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE];
         if (block !== BlockId.WATER) continue;
-        const wx = chunkX * CHUNK_SIZE + x;
+        const wx = chunkX * CHUNK_SIZE - half + x;
         const wy = chunkY * CHUNK_SIZE + y;
-        const wz = chunkZ * CHUNK_SIZE + z;
+        const wz = chunkZ * CHUNK_SIZE - half + z;
         const topNeighbor = getNeighbor(voxels, x, y, z, 'top');
         if (!isLiquid(topNeighbor) || topNeighbor === 0) {
           pushFace(state, wx, wy, wz, 'top', waterUV);
@@ -142,16 +146,17 @@ export function buildWaterChunkMesh(voxels: Uint8Array, chunkX: number, chunkY: 
   return finalizeBuffers(state);
 }
 
-export function buildCrossMesh(blockId: number, chunkX: number, chunkY: number, chunkZ: number, voxels: Uint8Array): ChunkMeshBuffers {
+export function buildCrossMesh(blockId: number, chunkX: number, chunkY: number, chunkZ: number, voxels: Uint8Array, worldSize = 512): ChunkMeshBuffers {
   const state: BuilderState = { positions: [], normals: [], uvs: [], indices: [] };
   const uv = tileUV(14, 2);
+  const half = worldSize / 2;
   for (let y = 0; y < CHUNK_SIZE; y++) {
     for (let z = 0; z < CHUNK_SIZE; z++) {
       for (let x = 0; x < CHUNK_SIZE; x++) {
         if (voxels[x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE] !== blockId) continue;
-        const wx = chunkX * CHUNK_SIZE + x;
+        const wx = chunkX * CHUNK_SIZE - half + x;
         const wy = chunkY * CHUNK_SIZE + y;
-        const wz = chunkZ * CHUNK_SIZE + z;
+        const wz = chunkZ * CHUNK_SIZE - half + z;
         const pattern = (ATLAS_MAP[blockId] as any)?.pattern as AtlasFaceSlot;
         if (pattern === 'plant') {
           const plantUV = tileUV(blockId === BlockId.FLOWER_RED ? 14 : 15, 2);

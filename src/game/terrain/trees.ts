@@ -31,12 +31,13 @@ export function generateTrees(ctx: NoiseContext, seed: number, worldSize: number
   return trees;
 }
 
-export function placeTreeIntoChunk(chunkData: Uint8Array, chunkX: number, chunkY: number, chunkZ: number, tree: TreePlacement): void {
-  const lx = ((tree.x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-  const lz = ((tree.z % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+export function placeTreeIntoChunk(chunkData: Uint8Array, chunkX: number, chunkY: number, chunkZ: number, tree: TreePlacement, worldSize: number): void {
+  const half = worldSize / 2;
+  const lx = Math.floor(tree.x + half) - chunkX * CHUNK_SIZE;
+  const lz = Math.floor(tree.z + half) - chunkZ * CHUNK_SIZE;
   if (tree.y < chunkY * CHUNK_SIZE || tree.y >= (chunkY + 1) * CHUNK_SIZE) return;
-  if (tree.x < chunkX * CHUNK_SIZE || tree.x >= (chunkX + 1) * CHUNK_SIZE) return;
-  if (tree.z < chunkZ * CHUNK_SIZE || tree.z >= (chunkZ + 1) * CHUNK_SIZE) return;
+  if (lx < 0 || lx >= CHUNK_SIZE) return;
+  if (lz < 0 || lz >= CHUNK_SIZE) return;
   const setBlock = (x: number, y: number, z: number, id: number) => {
     if (x < 0 || x >= CHUNK_SIZE || y < 0 || y >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE) return;
     chunkData[x + y * CHUNK_SIZE + z * CHUNK_SIZE * CHUNK_SIZE] = id;
@@ -88,12 +89,13 @@ export function generateDecorations(ctx: NoiseContext, seed: number, worldSize: 
   return out;
 }
 
-export function placeDecorationIntoChunk(chunkData: Uint8Array, chunkX: number, chunkY: number, chunkZ: number, dec: { x: number; y: number; z: number; id: number }): void {
-  if (dec.x < chunkX * CHUNK_SIZE || dec.x >= (chunkX + 1) * CHUNK_SIZE) return;
-  if (dec.z < chunkZ * CHUNK_SIZE || dec.z >= (chunkZ + 1) * CHUNK_SIZE) return;
+export function placeDecorationIntoChunk(chunkData: Uint8Array, chunkX: number, chunkY: number, chunkZ: number, dec: { x: number; y: number; z: number; id: number }, worldSize: number): void {
+  const half = worldSize / 2;
+  const lx = Math.floor(dec.x + half) - chunkX * CHUNK_SIZE;
+  const lz = Math.floor(dec.z + half) - chunkZ * CHUNK_SIZE;
   if (dec.y < chunkY * CHUNK_SIZE || dec.y >= (chunkY + 1) * CHUNK_SIZE) return;
-  const lx = ((dec.x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+  if (lx < 0 || lx >= CHUNK_SIZE) return;
+  if (lz < 0 || lz >= CHUNK_SIZE) return;
   const ly = dec.y - chunkY * CHUNK_SIZE;
-  const lz = ((dec.z % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
   chunkData[lx + ly * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_SIZE] = dec.id;
 }

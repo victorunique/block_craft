@@ -82,6 +82,18 @@ describe('AABB Step-Climbing (PH-001)', () => {
     expect(grounded).toBe(true);
     expect(finalY).toBeGreaterThanOrEqual(64);
   });
+
+  it('landing at exact integer Y does not clip into block', () => {
+    const map = new Map<string, number>();
+    map.set('0,64,0', BlockId.STONE);
+    const get = getBlock(map);
+    // Start at 65.0, target dy = -1.0 precisely so feet end up at exactly 64.0.
+    // Since gravity is 28, we want final vy = -20, so dy = -20 * 0.05 = -1.0.
+    // Initial vy should be -20 + (28 * 0.05) = -18.6.
+    const r = updateEntityPosition([0, 65.0, 0], [0, -18.6, 0], [0.6, 1.8], 0.05, get);
+    expect(r.newPos[1]).toBe(65);
+    expect(r.isOnGround).toBe(true);
+  });
 });
 
 describe('fallDamageFrom', () => {

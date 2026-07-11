@@ -33,6 +33,21 @@ describe('Greedy Mesh Builder', () => {
     expect(touch.indexCount).toBe(60);
   });
 
+  it('exposes faces of opaque block adjacent to transparent block', () => {
+    const data = new Uint8Array(CHUNK_SIZE ** 3);
+    // Place a stone block surrounded by air on all sides except one glass neighbor
+    data[1 + 1 * CHUNK_SIZE + 1 * CHUNK_SIZE * CHUNK_SIZE] = BlockId.STONE;
+    data[2 + 1 * CHUNK_SIZE + 1 * CHUNK_SIZE * CHUNK_SIZE] = BlockId.GLASS;
+    const m = buildChunkMeshGreedy(data, 0, 0, 0);
+    // Stone should still have all 6 faces rendered (glass is transparent, not opaque)
+    // Glass should have all 6 faces rendered (5 air + 1 stone neighbor, and stone is not transparent)
+    // Both blocks: stone has 6 faces (36 indices), glass has 6 faces (36 indices)
+    // But the shared face between stone and glass: stone shows face toward glass (glass is transparent),
+    // and glass shows face toward stone (stone is opaque, not transparent)
+    // Total: 12 faces = 72 indices
+    expect(m.indexCount).toBe(72);
+  });
+
   it('water mesh emits only top faces', () => {
     const data = new Uint8Array(CHUNK_SIZE ** 3);
     for (let lx = 0; lx < CHUNK_SIZE; lx++) {

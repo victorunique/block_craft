@@ -8,7 +8,7 @@ import PauseMenu from './game/ui/PauseMenu/PauseMenu';
 import GameOver from './game/ui/GameOver/GameOver';
 import GameViewport from './game/ui/Hud/GameViewport';
 import { useGameStore } from './game/store/gameStore';
-import { initSettingsStore } from './game/store/settingsStore';
+import { initSettingsStore, useSettingsStore } from './game/store/settingsStore';
 import { initSaveManager } from './game/save/saveManager';
 import { runStorageGuard } from './game/save/storageGuard';
 import './styles/app.css';
@@ -27,6 +27,10 @@ export default function App() {
       await initSettingsStore();
       await initSaveManager();
       await runStorageGuard();
+      if (typeof window !== 'undefined') {
+        (window as any).__bcGameStore = useGameStore;
+        (window as any).__bcSettingsStore = useSettingsStore;
+      }
       if (!cancelled) setBootstrapped(true);
     })();
     return () => {

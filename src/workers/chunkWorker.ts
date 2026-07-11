@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-
+// Cache invalidate touch
 import { createTerrainGenerator } from '../game/terrain/terrainGenerator';
 import { buildChunkMeshGreedy, buildWaterChunkMesh, buildCrossMesh } from '../game/rendering/chunkBuilder';
 import { applyChunkDelta } from '../game/rendering/chunkBuilder';
@@ -95,14 +95,15 @@ self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
       const cx = req.payload.chunkX ?? 0;
       const cy = req.payload.chunkY ?? 0;
       const cz = req.payload.chunkZ ?? 0;
+      const worldSize = req.payload.worldSize ?? 512;
       const buf = req.payload.voxelBuffer;
       if (!buf) throw new Error('voxelBuffer missing');
       const voxels = new Uint8Array(buf);
-      const mesh = buildChunkMeshGreedy(voxels, cx, cy, cz);
-      const water = buildWaterChunkMesh(voxels, cx, cy, cz);
-      const cross = buildCrossMesh(BlockId.TORCH, cx, cy, cz, voxels);
-      const flowers = buildCrossMesh(BlockId.FLOWER_RED, cx, cy, cz, voxels);
-      const dandelions = buildCrossMesh(BlockId.FLOWER_YELLOW, cx, cy, cz, voxels);
+      const mesh = buildChunkMeshGreedy(voxels, cx, cy, cz, worldSize);
+      const water = buildWaterChunkMesh(voxels, cx, cy, cz, worldSize);
+      const cross = buildCrossMesh(BlockId.TORCH, cx, cy, cz, voxels, worldSize);
+      const flowers = buildCrossMesh(BlockId.FLOWER_RED, cx, cy, cz, voxels, worldSize);
+      const dandelions = buildCrossMesh(BlockId.FLOWER_YELLOW, cx, cy, cz, voxels, worldSize);
 
       const res: WorkerResponse = {
         id: req.id,
@@ -145,17 +146,18 @@ self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
       const cx = req.payload.chunkX ?? 0;
       const cy = req.payload.chunkY ?? 0;
       const cz = req.payload.chunkZ ?? 0;
+      const worldSize = req.payload.worldSize ?? 512;
       const buf = req.payload.voxelBuffer;
       const dBuf = req.payload.deltaBuffer;
       if (!buf || !dBuf) throw new Error('buffers missing');
       const voxels = new Uint8Array(buf);
       const deltas = JSON.parse(new TextDecoder().decode(dBuf));
       const merged = applyChunkDelta(voxels, deltas);
-      const mesh = buildChunkMeshGreedy(merged, cx, cy, cz);
-      const water = buildWaterChunkMesh(merged, cx, cy, cz);
-      const cross = buildCrossMesh(BlockId.TORCH, cx, cy, cz, merged);
-      const flowers = buildCrossMesh(BlockId.FLOWER_RED, cx, cy, cz, merged);
-      const dandelions = buildCrossMesh(BlockId.FLOWER_YELLOW, cx, cy, cz, merged);
+      const mesh = buildChunkMeshGreedy(merged, cx, cy, cz, worldSize);
+      const water = buildWaterChunkMesh(merged, cx, cy, cz, worldSize);
+      const cross = buildCrossMesh(BlockId.TORCH, cx, cy, cz, merged, worldSize);
+      const flowers = buildCrossMesh(BlockId.FLOWER_RED, cx, cy, cz, merged, worldSize);
+      const dandelions = buildCrossMesh(BlockId.FLOWER_YELLOW, cx, cy, cz, merged, worldSize);
       const res: WorkerResponse = {
         id: req.id,
         type: 'MESH_COMPILED',

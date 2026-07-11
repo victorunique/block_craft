@@ -53,6 +53,7 @@ export function chunkWorkerHandler(ctx: HandlerContext) {
           const cx = req.payload.chunkX ?? 0;
           const cy = req.payload.chunkY ?? 0;
           const cz = req.payload.chunkZ ?? 0;
+          const worldSize = req.payload.worldSize ?? 512;
           const buf = req.payload.voxelBuffer;
           if (!buf) throw new Error('voxelBuffer missing');
           let voxels = new Uint8Array(buf);
@@ -62,11 +63,11 @@ export function chunkWorkerHandler(ctx: HandlerContext) {
             const deltas = JSON.parse(new TextDecoder().decode(dBuf));
             voxels = applyChunkDelta(voxels, deltas);
           }
-          const mesh = buildChunkMeshGreedy(voxels, cx, cy, cz);
-          const water = buildWaterChunkMesh(voxels, cx, cy, cz);
-          const cross = buildCrossMesh(BlockId.TORCH, cx, cy, cz, voxels);
-          const flowers = buildCrossMesh(BlockId.FLOWER_RED, cx, cy, cz, voxels);
-          const dandelions = buildCrossMesh(BlockId.FLOWER_YELLOW, cx, cy, cz, voxels);
+          const mesh = buildChunkMeshGreedy(voxels, cx, cy, cz, worldSize);
+          const water = buildWaterChunkMesh(voxels, cx, cy, cz, worldSize);
+          const cross = buildCrossMesh(BlockId.TORCH, cx, cy, cz, voxels, worldSize);
+          const flowers = buildCrossMesh(BlockId.FLOWER_RED, cx, cy, cz, voxels, worldSize);
+          const dandelions = buildCrossMesh(BlockId.FLOWER_YELLOW, cx, cy, cz, voxels, worldSize);
           ctx.postMessage({
             id: req.id,
             type: 'MESH_COMPILED',

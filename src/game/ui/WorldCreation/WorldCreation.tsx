@@ -31,7 +31,7 @@ export default function WorldCreation() {
 
     startGame({ worldId, worldName, seed: validSeed, size, difficulty, playerPos: [spawnX, spawnY, spawnZ] });
 
-    const cm = createChunkManagerForWorld(validSeed, size, 8);
+    const cm = createChunkManagerForWorld(validSeed, size, 8, worldId);
     const sp = createSpawner(cm, validSeed, size);
     setActiveWorld(cm, sp);
 

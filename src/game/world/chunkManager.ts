@@ -16,6 +16,7 @@ export interface ChunkManagerOptions {
   worldSize: number;
   renderDistance: number;
   worker: ChunkWorkerClient;
+  worldId?: string;
 }
 
 export class ChunkManager {
@@ -26,12 +27,15 @@ export class ChunkManager {
 
   private chunks = new Map<string, ChunkEntry>();
   private dirty = new Set<string>();
+  revision = 0;
+  worldId = 'default';
 
   constructor(opts: ChunkManagerOptions) {
     this.seed = opts.seed;
     this.worldSize = opts.worldSize;
     this.renderDistance = opts.renderDistance;
     this.worker = opts.worker;
+    if (opts.worldId) this.worldId = opts.worldId;
   }
 
   setRenderDistance(d: number) {
@@ -88,7 +92,7 @@ export class ChunkManager {
       }
     }
     entry!.voxels = merged;
-    const mesh = await this.worker.compileMesh(data.voxelBuffer, cx, cy, cz);
+    const mesh = await this.worker.compileMesh(merged.buffer.slice(0) as ArrayBuffer, cx, cy, cz, this.worldSize);
     entry!.mesh = mesh;
     entry!.generation = null;
     return entry!;
@@ -98,12 +102,7 @@ export class ChunkManager {
   }
 
   private getWorldIdFromAnywhere(): string {
-    try {
-      const { activeWorldId } = require('../store/gameStore').useGameStore.getState();
-      return activeWorldId ?? 'default';
-    } catch {
-      return 'default';
-    }
+    return this.worldId;
   }
 
   setBlockAt(x: number, y: number, z: number, blockId: number): boolean {
@@ -144,10 +143,11 @@ export class ChunkManager {
         const [cx, cy, cz] = k.split(',').map(Number);
         const entry = this.chunks.get(k);
         if (!entry) return;
-        const mesh = await this.worker.compileMesh(entry.voxels.buffer.slice(0) as ArrayBuffer, cx, cy, cz);
+        const mesh = await this.worker.compileMesh(entry.voxels.buffer.slice(0) as ArrayBuffer, cx, cy, cz, this.worldSize);
         entry.mesh = mesh;
       }),
     );
+    this.revision++;
   }
 
   async updateAroundPlayer(playerX: number, playerY: number, playerZ: number): Promise<void> {

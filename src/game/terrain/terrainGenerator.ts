@@ -66,8 +66,8 @@ export function createTerrainGenerator(seed: number, worldSize: number): Terrain
 
       for (let lz = 0; lz < CHUNK_SIZE; lz++) {
         for (let lx = 0; lx < CHUNK_SIZE; lx++) {
-          const wx = chunkX * CHUNK_SIZE + lx;
-          const wz = chunkZ * CHUNK_SIZE + lz;
+          const wx = chunkX * CHUNK_SIZE - half + lx;
+          const wz = chunkZ * CHUNK_SIZE - half + lz;
           const height = getHeightAt(ctx, wx, wz);
           const biome = getBiomeAt(ctx, wx, wz, height);
           const surfaceBlock = SURFACE_BLOCKS[biome];
@@ -132,11 +132,11 @@ export function createTerrainGenerator(seed: number, worldSize: number): Terrain
 
       const treesHere = generateTrees(ctx, seed, worldSize);
       for (const t of treesHere) {
-        placeTreeIntoChunk(data, chunkX, chunkY, chunkZ, t);
+        placeTreeIntoChunk(data, chunkX, chunkY, chunkZ, t, worldSize);
       }
       const decs = generateDecorations(ctx, seed, worldSize);
       for (const d of decs) {
-        placeDecorationIntoChunk(data, chunkX, chunkY, chunkZ, d);
+        placeDecorationIntoChunk(data, chunkX, chunkY, chunkZ, d, worldSize);
       }
       return data;
     },

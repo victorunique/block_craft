@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { createTerrainGenerator } from '@/game/terrain/terrainGenerator';
 import { CHUNK_SIZE } from '@/config/constants';
+import { BlockId } from '@/config/blocks';
+import { generateTrees } from '@/game/terrain/trees';
+import { createNoiseContext } from '@/game/terrain/simplex';
 
 describe('TerrainGenerator', () => {
   it('produces deterministic heights for the same seed', () => {
@@ -49,5 +52,68 @@ describe('TerrainGenerator', () => {
     const ha = a.getHeightAt(50, 50);
     const hb = b.getHeightAt(50, 50);
     expect(ha).not.toBe(hb);
+  });
+
+  it('aligns chunk coordinates with world coordinates for height generation', () => {
+    const seed = 12345;
+    const worldSize = 512;
+    const half = worldSize / 2;
+    const gen = createTerrainGenerator(seed, worldSize);
+    
+    // Test at world coordinates (0, 0)
+    const wx = 0;
+    const wz = 0;
+    const expectedHeight = gen.getHeightAt(wx, wz);
+    
+    // Chunk coordinates for world (0, 0)
+    const cx = Math.floor((wx + half) / CHUNK_SIZE);
+    const cz = Math.floor((wz + half) / CHUNK_SIZE);
+    const cy = Math.floor(expectedHeight / CHUNK_SIZE);
+    
+    const data = gen.generateChunkData(cx, cy, cz);
+    
+    const lx = 0; // since wx + half - cx * CHUNK_SIZE = 0 + 256 - 256 = 0
+    const lz = 0; // since wz + half - cz * CHUNK_SIZE = 0 + 256 - 256 = 0
+    const ly = expectedHeight % CHUNK_SIZE;
+    
+    const idx = lx + ly * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_SIZE;
+    const blockId = data[idx];
+    
+    // The block at the surface height should be a non-air block
+    expect(blockId).not.toBe(BlockId.AIR);
+    
+    // A block above the surface height should be air
+    if (ly + 1 < CHUNK_SIZE) {
+      const aboveIdx = lx + (ly + 1) * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_SIZE;
+      expect(data[aboveIdx]).toBe(BlockId.AIR);
+    }
+  });
+
+  it('places trees in the correct chunks matching their world coordinates', () => {
+    const seed = 12345;
+    const worldSize = 512;
+    const half = worldSize / 2;
+    const gen = createTerrainGenerator(seed, worldSize);
+    
+    const ctx = createNoiseContext(seed);
+    const trees = generateTrees(ctx, seed, worldSize);
+    expect(trees.length).toBeGreaterThan(0);
+    
+    const testTree = trees[0];
+    
+    // Find the correct chunk coordinates for this tree
+    const cx = Math.floor((testTree.x + half) / CHUNK_SIZE);
+    const cz = Math.floor((testTree.z + half) / CHUNK_SIZE);
+    const cy = Math.floor(testTree.y / CHUNK_SIZE);
+    
+    const data = gen.generateChunkData(cx, cy, cz);
+    
+    const lx = Math.floor(testTree.x + half) - cx * CHUNK_SIZE;
+    const ly = testTree.y - cy * CHUNK_SIZE;
+    const lz = Math.floor(testTree.z + half) - cz * CHUNK_SIZE;
+    
+    const idx = lx + ly * CHUNK_SIZE + lz * CHUNK_SIZE * CHUNK_SIZE;
+    const isWood = data[idx] === BlockId.WOOD || data[idx] === BlockId.PINE_WOOD;
+    expect(isWood).toBe(true);
   });
 });

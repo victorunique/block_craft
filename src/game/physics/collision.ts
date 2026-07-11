@@ -78,7 +78,7 @@ export function updateEntityPosition(
   if (collidesWithWorld(testBox, getBlock)) {
     if (dy < 0) {
       isOnGround = true;
-      const top = Math.ceil(testBox.min[1]);
+      const top = Math.floor(testBox.min[1]) + 1;
       ny = top;
     } else {
       ny = pos[1];
