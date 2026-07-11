@@ -1,0 +1,100 @@
+:root {
+  /* Brand */
+  --color-primary: #4D96FF;
+  --color-primary-hover: #357AE8;
+  --color-secondary: #FFD93D;
+  --color-secondary-hover: #E8C430;
+
+  /* Semantic */
+  --color-success: #6BCB77;
+  --color-danger: #FF6B6B;
+  --color-warning: #FF8C32;
+  --color-oxygen: #54BAB9;
+
+  /* Neutrals */
+  --color-bg-base: #F9F5F0;
+  --color-bg-card: #FFFFFF;
+  --color-bg-overlay: rgba(255, 253, 250, 0.85);
+
+  /* Borders */
+  --color-border-light: #EFE8DF;
+  --color-border-medium: #D0C3B1;
+
+  /* Text */
+  --color-text-main: #2C302E;
+  --color-text-muted: #6B706E;
+  --color-text-white: #FFFFFF;
+
+  /* Shadows */
+  --shadow-soft: 0 8px 24px rgba(180, 160, 140, 0.15);
+  --shadow-medium: 0 12px 32px rgba(150, 130, 110, 0.25);
+  --shadow-pressed: 0 2px 4px rgba(150, 130, 110, 0.1);
+
+  /* Spacing */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  /* Radius */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+
+  /* Font */
+  --font-heading: 'Outfit', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-body);
+  background: var(--color-bg-base);
+  color: var(--color-text-main);
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+*:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-heading);
+  margin: 0;
+}

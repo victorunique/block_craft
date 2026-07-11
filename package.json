@@ -1,0 +1,43 @@
+{
+  "name": "blockcraft",
+  "version": "1.0.0-beta",
+  "private": true,
+  "description": "BlockCraft — a pure-frontend browser voxel sandbox game",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings 0"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.160.0",
+    "@react-three/fiber": "^8.15.19",
+    "@react-three/drei": "^9.99.0",
+    "zustand": "^4.5.2",
+    "simplex-noise": "^4.0.3",
+    "idb": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/three": "^0.160.0",
+    "@types/node": "^20.12.7",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11",
+    "vite-plugin-pwa": "^0.20.0",
+    "vitest": "^1.6.0",
+    "happy-dom": "^14.10.1",
+    "fake-indexeddb": "^6.0.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/jest-dom": "^6.4.6",
+    "@playwright/test": "^1.44.1"
+  }
+}
