@@ -35,6 +35,7 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
   const damagePlayer = useGameStore((s) => s.damagePlayer);
   const tickHunger = useGameStore((s) => s.tickHunger);
   const viewport = useViewport();
+  const chunkManagerRef = useRef(chunkManager);
 
   const velRef = useRef<[number, number, number]>([0, 0, 0]);
   const onGroundRef = useRef(false);
@@ -43,11 +44,20 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
   const lastJumpRef = useRef(false);
   const breakingBlockRef = useRef<{ x: number; y: number; z: number; progress: number } | null>(null);
   const yawRef = useRef(0);
-  const pitchRef = useRef(0);
+  const pitchRef = useRef(-0.15);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
     camera.position.set(playerPos[0], playerPos[1] + 1.62, playerPos[2]);
-  }, []);
+    camera.rotation.order = 'YXZ';
+    camera.rotation.y = yawRef.current;
+    camera.rotation.x = pitchRef.current;
+    initializedRef.current = true;
+  }, [camera, playerPos[0], playerPos[1], playerPos[2]]);
+
+  useEffect(() => {
+    chunkManagerRef.current = chunkManager;
+  }, [chunkManager]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -100,6 +110,14 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
     if (isPaused || screen !== 'game') return;
     const cappedDt = Math.min(dt, 1 / 20);
 
+    const cm = chunkManagerRef.current;
+    const { cx, cy, cz } = cm.worldToChunk(playerPos[0], playerPos[1], playerPos[2]);
+    const spawnChunk = cm.getChunk(cx, cy, cz);
+    if (!spawnChunk || !spawnChunk.mesh) {
+      camera.position.set(playerPos[0], playerPos[1] + 1.62, playerPos[2]);
+      return;
+    }
+
     const sens = settings.mouseSensitivity;
     yawRef.current -= (mouseRef.current.dx * sens) * 0.002;
     pitchRef.current -= (mouseRef.current.dy * sens) * 0.002;
@@ -138,6 +156,18 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
       [result.newPos[0], result.newPos[1], result.newPos[2]],
       [pitchRef.current, yawRef.current],
     );
+
+    if (result.newPos[1] < -10) {
+      const s = useGameStore.getState();
+      const half = chunkManager.worldSize / 2;
+      const safeX = Math.max(-half + 5, Math.min(half - 5, result.newPos[0]));
+      const safeZ = Math.max(-half + 5, Math.min(half - 5, result.newPos[2]));
+      const surface = getHeight(Math.floor(safeX), Math.floor(safeZ));
+      useGameStore.setState({ playerPos: [safeX, surface + 4, safeZ] });
+      camera.position.set(safeX, surface + 4 + 1.62, safeZ);
+      velRef.current[1] = 0;
+      s.damagePlayer(2, 'void');
+    }
 
     tickHunger(cappedDt, useGameStore.getState().difficulty);
     void mouseRef;
@@ -206,10 +236,23 @@ function dropForBlock(block: number): number {
 
 function WorldChunks({ chunkManager }: { chunkManager: ChunkManager }) {
   const [atlas, setAtlas] = useState<{ canvas: HTMLCanvasElement; texture: THREE.Texture } | null>(null);
+  const [tick, setTick] = useState(0);
   useEffect(() => {
     void getAtlas().then((a) => setAtlas(a));
+    if (typeof window !== 'undefined') {
+      (window as any).__bcChunkManager = chunkManager;
+    }
   }, []);
+  useFrame(() => {
+    setTick((t) => (t + 1) % 60);
+  });
   const chunks = Array.from(chunkManager.entries()) as ChunkEntry[];
+  if (typeof window !== 'undefined' && tick === 0) {
+    const loaded = chunks.filter((c) => c.mesh).length;
+    const total = chunks.length;
+    const cam = (window as any).__bcDebug;
+    if (cam) cam({ loaded, total, pos: useGameStore.getState().playerPos });
+  }
   if (!atlas) return null;
   return (
     <>
@@ -230,8 +273,9 @@ function SunAndSky() {
   return (
     <>
       <color attach="background" args={[color.r, color.g, color.b]} />
-      <ambientLight intensity={0.4 + intensity * 0.4} />
-      <directionalLight position={sunPos} intensity={intensity} />
+      <ambientLight intensity={0.9} />
+      <hemisphereLight args={['#aee0ff', '#776644', 0.5]} />
+      <directionalLight position={sunPos} intensity={intensity} castShadow={false} />
     </>
   );
 }
@@ -275,9 +319,7 @@ export default function GameEngine({ chunkManager, spawner }: Props) {
     setRenderDistance(settings.renderDistance);
   }, [settings.renderDistance]);
   void buildTextureAtlas;
-  const getHeight = (x: number, z: number) => {
-    return chunkManager.getBlockAt(x, 0, z);
-  };
+  const getHeight = (x: number, z: number) => getSurfaceHeight(chunkManager, x, z);
   const getBiome = (x: number, z: number) => {
     return 'plains';
   };
@@ -302,18 +344,35 @@ export function createChunkManagerForWorld(seed: number, worldSize: number, rend
   return new ChunkManager({ seed, worldSize, renderDistance, worker: getChunkWorker() });
 }
 
+export function getSurfaceHeight(chunkManager: ChunkManager, x: number, z: number): number {
+  const half = chunkManager.worldSize / 2;
+  if (x < -half || x >= half || z < -half || z >= half) return 64;
+  for (let y = 120; y >= 0; y--) {
+    if (chunkManager.getBlockAt(x, y, z) !== 0 && chunkManager.getBlockAt(x, y, z) !== 8) {
+      return y + 1;
+    }
+  }
+  return 64;
+}
+
 export function createSpawner(chunkManager: ChunkManager, seed: number, worldSize: number) {
   return new EntitySpawner({
     seed,
     difficulty: useGameStore.getState().difficulty,
-    getHeight: (x, z) => {
-      const half = worldSize / 2;
-      const y = 64;
-      const h = chunkManager.getBlockAt(x, y, z);
-      return h !== 0 ? y : y;
-    },
+    getHeight: (x, z) => getSurfaceHeight(chunkManager, x, z),
     getBiome: () => 'plains',
-    isLit: () => false,
+    isLit: (x, y, z) => {
+      let lit = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dz = -1; dz <= 1; dz++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const b = chunkManager.getBlockAt(x + dx, y + dy, z + dz);
+            if (b === 15) lit += 1;
+          }
+        }
+      }
+      return lit > 0;
+    },
     playerPos: () => useGameStore.getState().playerPos,
     timeOfDay: () => useGameStore.getState().timeOfDay,
     worldSize,

@@ -76,22 +76,23 @@ export class ChunkManager {
     if (entry && entry.generation) return entry.generation;
 
     entry = { cx, cy, cz, voxels: new Uint8Array(0), mesh: null, generation: null };
-    entry.generation = (async () => {
-      const data = await this.worker.generateChunk(this.seed, this.worldSize, cx, cy, cz);
-      const merged = new Uint8Array(data.voxelBuffer);
-      const deltas = getInMemoryChunkDeltas().get(`${this.getWorldIdFromAnywhere()}|${k}`);
-      if (deltas) {
-        for (const [idx, v] of Object.entries(deltas)) {
-          const i = Number(idx);
-          if (i >= 0 && i < merged.length) merged[i] = v;
-        }
+  entry.generation = (async () => {
+    const data = await this.worker.generateChunk(this.seed, this.worldSize, cx, cy, cz);
+    const safeBuffer = data.voxelBuffer.slice(0);
+    const merged = new Uint8Array(safeBuffer);
+    const deltas = getInMemoryChunkDeltas().get(`${this.getWorldIdFromAnywhere()}|${k}`);
+    if (deltas) {
+      for (const [idx, v] of Object.entries(deltas)) {
+        const i = Number(idx);
+        if (i >= 0 && i < merged.length) merged[i] = v;
       }
-      entry!.voxels = merged;
-      const mesh = await this.worker.compileMesh(data.voxelBuffer, cx, cy, cz);
-      entry!.mesh = mesh;
-      entry!.generation = null;
-      return entry!;
-    })();
+    }
+    entry!.voxels = merged;
+    const mesh = await this.worker.compileMesh(data.voxelBuffer, cx, cy, cz);
+    entry!.mesh = mesh;
+    entry!.generation = null;
+    return entry!;
+  })();
     this.chunks.set(k, entry);
     return entry.generation;
   }
@@ -193,5 +194,23 @@ export class ChunkManager {
 
   getChunk(cx: number, cy: number, cz: number): ChunkEntry | undefined {
     return this.chunks.get(this.key(cx, cy, cz));
+  }
+
+  loadedCount(): number {
+    let n = 0;
+    for (const e of this.chunks.values()) if (e.mesh) n++;
+    return n;
+  }
+
+  pendingCount(): number {
+    let n = 0;
+    for (const e of this.chunks.values()) if (!e.mesh) n++;
+    return n;
+  }
+
+  dispose(): void {
+    this.chunks.clear();
+    this.dirty.clear();
+    this.worker.dispose();
   }
 }

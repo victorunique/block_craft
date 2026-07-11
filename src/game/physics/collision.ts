@@ -76,8 +76,13 @@ export function updateEntityPosition(
   testBox = createPlayerAABB([nx, ny, nz], w, h);
   let isOnGround = false;
   if (collidesWithWorld(testBox, getBlock)) {
-    if (dy < 0) isOnGround = true;
-    ny = pos[1];
+    if (dy < 0) {
+      isOnGround = true;
+      const top = Math.ceil(testBox.min[1]);
+      ny = top;
+    } else {
+      ny = pos[1];
+    }
     vy = 0;
   }
 

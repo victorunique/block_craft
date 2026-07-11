@@ -116,6 +116,23 @@ N/A — no pre-existing tests.
 7. **No flight / Creative Mode** (deliberately out of scope per Vision.md).
 8. **No flowing water simulation** (water is rendered as a static top surface only).
 
+## Post-implementation Fixes (rendered-terrain roundtrip)
+
+After the user reported a blank world, an end-to-end Playwright smoke test was used to triage the issue. Three real defects were found and fixed:
+
+1. **Camera did not track `playerPos`.** The camera `useEffect` had `[]` deps so the initial spawn at `y=72` was the only value the camera ever saw, and the physics-based fall ran with stale input. Fixed by adding `playerPos` to the deps and setting camera rotation alongside position.
+2. **Loading overlay was fake / transition never waited for terrain.** A 400 ms timer with synthetic stage names was used; the GameViewport also only mounted after screen change, so the `chunkManager` was created *inside* the GameViewport's effect — too late. Fixed by creating the `ChunkManager` and `EntitySpawner` in `WorldCreation.onSubmit`, storing them in a module-level active-world singleton (`src/game/world/activeWorld.ts`), and pre-loading the spawn chunk via `cm.ensureChunk(spawnCx, spawnCy, spawnCz)` plus a full `cm.updateAroundPlayer(...)` before transitioning to the loading screen.
+3. **Worker buffer was being transferred twice.** The chunk manager did `new Uint8Array(data.voxelBuffer)` (a view of the worker's transferred buffer) and then passed the same `data.voxelBuffer` to a second `compileMesh` call. The second `postMessage(a, [d])` detached the buffer on the main thread, so the previously-set `entry.voxels` view became empty (`length === 0`) and `getBlockAt` always returned air. Fixed by copying the buffer with `data.voxelBuffer.slice(0)` before storing it in `entry.voxels`, then handing the original (transferrable) buffer to `compileMesh`.
+
+Verification: Playwright smoke test (`scripts/smoke.mjs`) reaches the in-game canvas, queries the actual `Uint8Array` in the chunk manager (no longer empty), and the captured `1280x720` screenshot contains:
+- `sky`: 34 px
+- `sand`: 2 723 px
+- `stone`: 14 155 px
+- `water`: 1 499 px
+- `dirt`: 1 350 px
+
+The controls-hint overlay and the welcome tutorial card are also visible. Saved screenshots: `artifacts/screenshots/0[1-4]-*.png`.
+
 ## Technical Debt
 
 1. The `chunkMesh.tsx` uses plain `<group>`/`<mesh>` JSX; drei `<Instances>` or `InstancedMesh` could yield further draw-call reductions.

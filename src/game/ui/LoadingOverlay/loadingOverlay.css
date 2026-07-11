@@ -22,6 +22,19 @@
   box-shadow: var(--shadow-medium);
 }
 
+.loading-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  color: var(--color-text-main);
+}
+
+.loading-count {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
 .loading-spinner {
   width: 64px;
   height: 64px;

@@ -68,17 +68,19 @@ describe('AABB Step-Climbing (PH-001)', () => {
     let pos: [number, number, number] = [0, 66, 0];
     let vel: [number, number, number] = [0, -10, 0];
     let grounded = false;
+    let finalY = 0;
     for (let i = 0; i < 30; i++) {
       const r = updateEntityPosition(pos, vel, [0.6, 1.8], 0.05, get);
       pos = r.newPos;
       vel = r.newVel;
+      finalY = r.newPos[1];
       if (r.isOnGround) {
         grounded = true;
         break;
       }
     }
     expect(grounded).toBe(true);
-    expect(pos[1]).toBeGreaterThanOrEqual(64);
+    expect(finalY).toBeGreaterThanOrEqual(64);
   });
 });
 

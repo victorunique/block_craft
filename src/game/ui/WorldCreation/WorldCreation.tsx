@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { uuid } from '../../../utils';
 import { createTerrainGenerator } from '../../terrain/terrainGenerator';
+import { createChunkManagerForWorld } from '../Hud/GameEngine';
+import { createSpawner } from '../Hud/GameEngine';
+import { setActiveWorld } from '../../world/activeWorld';
 import { SEALEVEL, type Difficulty, type WorldSize } from '../../../config/constants';
 import './worldCreation.css';
 
@@ -20,18 +23,24 @@ export default function WorldCreation() {
     const validSeed = Number.isFinite(seed) ? Math.abs(seed) : Math.floor(Math.random() * 90000000) + 10000000;
     const worldId = uuid();
     const worldName = name.trim() || 'My World';
-    startGame({ worldId, worldName, seed: validSeed, size, difficulty, playerPos: [0, 72, 0] });
-    setLoading(0.05, 'Sculpting hills...');
-    setTimeout(() => setLoading(0.3, 'Planting trees...'), 80);
-    setTimeout(() => setLoading(0.6, 'Hiding diamonds...'), 160);
-    setTimeout(() => setLoading(0.9, 'Populating animals...'), 240);
-    setTimeout(() => {
-      const gen = createTerrainGenerator(validSeed, size);
-      const spawnY = gen.getHeightAt(0, 0) + 2;
-      useGameStore.setState({ playerPos: [0, spawnY, 0] });
-      setLoading(1, 'Ready!');
-      setTimeout(() => setScreen('game'), 80);
-    }, 320);
+
+    const gen = createTerrainGenerator(validSeed, size);
+    const spawnX = 0;
+    const spawnZ = 0;
+    const spawnY = Math.max(SEALEVEL + 1, gen.getHeightAt(spawnX, spawnZ) + 1.2);
+
+    startGame({ worldId, worldName, seed: validSeed, size, difficulty, playerPos: [spawnX, spawnY, spawnZ] });
+
+    const cm = createChunkManagerForWorld(validSeed, size, 8);
+    const sp = createSpawner(cm, validSeed, size);
+    setActiveWorld(cm, sp);
+
+    setLoading(0.05, 'Generating terrain...');
+
+    const { cx, cy, cz } = cm.worldToChunk(spawnX, spawnY, spawnZ);
+    void cm.ensureChunk(cx, cy, cz);
+    void cm.updateAroundPlayer(spawnX, spawnY, spawnZ);
+    setScreen('loading');
   };
 
   return (

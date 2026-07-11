@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { useViewport } from '../../../hooks/useViewport';
 import { getBiomeName } from '../../world/biome';
 import MobileControls from '../MobileControls/MobileControls';
+import ControlsHint from './ControlsHint';
+import TutorialOverlay from './TutorialOverlay';
 import './hud.css';
 
 function HeartsGrid({ health }: { health: number }) {
@@ -143,6 +145,8 @@ export default function Hud() {
           </div>
         )}
       </div>
+      <ControlsHint />
+      <TutorialOverlay />
       <div className="crosshair" aria-hidden>+</div>
       <div className="hud-bottom">
         <div className="status-bars">
