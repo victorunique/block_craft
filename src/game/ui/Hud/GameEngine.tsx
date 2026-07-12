@@ -213,7 +213,7 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
       velRef.current,
       [PLAYER_WIDTH, PLAYER_HEIGHT],
       cappedDt,
-      (x, y, z) => chunkManager.getBlockAt(x, y, z),
+      (x, y, z) => chunkManager.getBlockAt(x, y, z, true),
       { jumpRequested: jump && !lastJumpRef.current },
     );
     lastJumpRef.current = jump;

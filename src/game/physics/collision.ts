@@ -1,6 +1,6 @@
 import type { AABB } from './types';
 import { collidesWithWorld, expandAABB, isInLiquid, type BlockLookup } from './aabb';
-import { GRAVITY, JUMP_VELOCITY, STEP_CLIMB_HEIGHT, TERMINAL_VELOCITY, WATER_DRAG } from '../../config/constants';
+import { GRAVITY, JUMP_VELOCITY, TERMINAL_VELOCITY, WATER_DRAG } from '../../config/constants';
 
 export interface PhysicsResult {
   newPos: [number, number, number];
@@ -58,18 +58,8 @@ export function updateEntityPosition(
   nx += dx;
   let testBox = createPlayerAABB([nx, ny, nz], w, h);
   if (collidesWithWorld(testBox, getBlock)) {
-    if (opts.jumpRequested && false) {
-    }
-    const stepUp = tryStepUp([nx, ny, nz], pos, getBlock, w, h);
-    if (stepUp) {
-      nx = stepUp[0];
-      ny = stepUp[1];
-      nz = stepUp[2];
-      vx = 0;
-    } else {
-      nx = pos[0];
-      vx = 0;
-    }
+    nx = pos[0];
+    vx = 0;
   }
 
   ny += dy;
@@ -89,13 +79,8 @@ export function updateEntityPosition(
   nz += dz;
   testBox = createPlayerAABB([nx, ny, nz], w, h);
   if (collidesWithWorld(testBox, getBlock)) {
-    const stepUp = tryStepUp([nx, ny, nz], [nx, pos[1], nz], getBlock, w, h);
-    if (stepUp) {
-      ny = stepUp[1];
-    } else {
-      nz = pos[2];
-      vz = 0;
-    }
+    nz = pos[2];
+    vz = 0;
   }
 
   if (ny < 0) {
@@ -111,13 +96,7 @@ function isGroundedAt(pos: [number, number, number], getBlock: BlockLookup): boo
   return collidesWithWorld(test, getBlock);
 }
 
-function tryStepUp(candidate: [number, number, number], base: [number, number, number], getBlock: BlockLookup, w: number, h: number): [number, number, number] | null {
-  const stepBox = createPlayerAABB([candidate[0], candidate[1] + STEP_CLIMB_HEIGHT, candidate[2]], w, h);
-  if (!collidesWithWorld(stepBox, getBlock)) {
-    return [candidate[0], candidate[1] + STEP_CLIMB_HEIGHT, candidate[2]];
-  }
-  return null;
-}
+
 
 export function fallDamageFrom(deltaY: number): number {
   if (deltaY <= 3) return 0;

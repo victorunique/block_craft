@@ -1,12 +1,23 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useGameStore } from '@/game/store/gameStore';
 import { BlockId } from '@/config/blocks';
 import { MAX_HEALTH, MAX_HUNGER, MAX_OXYGEN, HOTBAR_SIZE, STORAGE_SIZE, ARMOR_SIZE } from '@/config/constants';
 import { RECIPES as RECIPES_CONST } from '@/game/crafting/recipes';
+import { clearActiveWorld } from '@/game/world/activeWorld';
+
+vi.mock('@/game/world/activeWorld', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/game/world/activeWorld')>();
+  return {
+    ...original,
+    clearActiveWorld: vi.fn(original.clearActiveWorld),
+  };
+});
+
 
 const ZS = 'blockcraft_settings';
 
 beforeEach(() => {
+  vi.clearAllMocks();
   localStorage.removeItem(ZS);
   useGameStore.setState({
     screen: 'main-menu',
@@ -242,11 +253,25 @@ describe('IGameState — screen and pause', () => {
     expect(useGameStore.getState().screen).toBe('game');
   });
 
-  it('quitToMenu returns to main-menu', () => {
+  it('quitToMenu returns to main-menu and clears active world', () => {
     useGameStore.setState({ screen: 'game', isPaused: true });
     useGameStore.getState().quitToMenu();
     expect(useGameStore.getState().screen).toBe('main-menu');
     expect(useGameStore.getState().isPaused).toBe(false);
+    expect(clearActiveWorld).toHaveBeenCalledTimes(1);
+  });
+
+  it('startGame clears active world and transitions to loading', () => {
+    useGameStore.getState().startGame({
+      worldId: 'new-world',
+      worldName: 'My New World',
+      seed: 42,
+      size: 256,
+      difficulty: 'easy',
+      playerPos: [10, 80, 10],
+    });
+    expect(useGameStore.getState().screen).toBe('loading');
+    expect(clearActiveWorld).toHaveBeenCalledTimes(1);
   });
 
   it('toggleInventory flips showInventory', () => {

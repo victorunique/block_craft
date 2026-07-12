@@ -55,9 +55,11 @@ export default function App() {
       {screen === 'main-menu' && <MainMenu />}
       {screen === 'world-creation' && <WorldCreation />}
       {screen === 'loading' && <LoadingOverlay />}
+      {(screen === 'game' || screen === 'paused' || screen === 'loading') && (
+        <GameViewport />
+      )}
       {(screen === 'game' || screen === 'paused') && (
         <>
-          <GameViewport />
           <Hud />
           {showInventory && !gameOver && <InventoryDialog />}
           {showSmelting && !gameOver && <SmeltingDialog />}

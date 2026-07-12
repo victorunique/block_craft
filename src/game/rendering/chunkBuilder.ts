@@ -80,7 +80,11 @@ function pushFace(state: BuilderState, baseX: number, baseY: number, baseZ: numb
     state.normals.push(normal[0], normal[1], normal[2]);
   }
   state.uvs.push(uv.u0, uv.v0, uv.u1, uv.v0, uv.u1, uv.v1, uv.u0, uv.v1);
-  state.indices.push(startIndex, startIndex + 1, startIndex + 2, startIndex, startIndex + 2, startIndex + 3);
+  if (face === 'top' || face === 'bottom') {
+    state.indices.push(startIndex, startIndex + 2, startIndex + 1, startIndex, startIndex + 3, startIndex + 2);
+  } else {
+    state.indices.push(startIndex, startIndex + 1, startIndex + 2, startIndex, startIndex + 2, startIndex + 3);
+  }
 }
 
 function getVoxel(voxels: Uint8Array, x: number, y: number, z: number): number {

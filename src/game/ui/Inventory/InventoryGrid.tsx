@@ -144,7 +144,7 @@ function PlayerPreview() {
               style={{ width: `${(health / 20) * 100}%` }}
             />
           </span>
-          <span className="player-preview-stat-value">{health}</span>
+          <span className="player-preview-stat-value">{Math.round(health)}</span>
         </div>
         <div className="player-preview-stat" title="Hunger">
           <span className="player-preview-stat-icon">🍗</span>
@@ -154,7 +154,7 @@ function PlayerPreview() {
               style={{ width: `${(hunger / 20) * 100}%` }}
             />
           </span>
-          <span className="player-preview-stat-value">{hunger}</span>
+          <span className="player-preview-stat-value">{Math.round(hunger)}</span>
         </div>
       </div>
     </div>

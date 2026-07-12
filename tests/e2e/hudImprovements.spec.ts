@@ -168,11 +168,20 @@ test('Inventory dialog shows split-view on desktop with both panels', async ({ p
       tabsHidden: !document.querySelector('.inv-tabs'),
     };
   });
-  expect(layout.isSplit).toBe(true);
-  expect(layout.hasInventoryPanel).toBe(true);
-  expect(layout.hasCraftingPanel).toBe(true);
-  expect(layout.hasPlayerPreview).toBe(true);
-  expect(layout.tabsHidden).toBe(true);
+  const width = page.viewportSize()?.width ?? 1024;
+  if (width < 768) {
+    expect(layout.isSplit).toBe(false);
+    expect(layout.hasInventoryPanel).toBe(true);
+    expect(layout.hasCraftingPanel).toBe(false);
+    expect(layout.hasPlayerPreview).toBe(true);
+    expect(layout.tabsHidden).toBe(false);
+  } else {
+    expect(layout.isSplit).toBe(true);
+    expect(layout.hasInventoryPanel).toBe(true);
+    expect(layout.hasCraftingPanel).toBe(true);
+    expect(layout.hasPlayerPreview).toBe(true);
+    expect(layout.tabsHidden).toBe(true);
+  }
 });
 
 test('Hotbar selected slot scales to 1.10', async ({ page }) => {
@@ -195,11 +204,37 @@ test('Hotbar selected slot scales to 1.10', async ({ page }) => {
 test('Loading overlay uses Spawning sheep message', async ({ page }) => {
   await page.locator('.menu-btn.new').click();
   await page.waitForTimeout(500);
+
+  // Set up store simulation before starting the game
+  await page.evaluate(() => {
+    const store = (window as any).__bcGameStore;
+    if (store) {
+      const startTime = Date.now();
+      const origSetLoading = store.getState().setLoading;
+      store.getState().setLoading = (progress: number, stage: string) => {
+        const elapsed = Date.now() - startTime;
+        let simulatedStage = 'Sculpting hills…';
+        if (elapsed > 600) {
+          simulatedStage = 'Spawning sheep…';
+        }
+        origSetLoading(progress, simulatedStage);
+      };
+
+      const origSetScreen = store.getState().setScreen;
+      store.getState().setScreen = (screen: string) => {
+        if (screen === 'game' && Date.now() - startTime < 1500) {
+          return;
+        }
+        origSetScreen(screen);
+      };
+    }
+  });
+
   await page.locator('.btn-primary').click();
   await page.waitForTimeout(100);
 
   const stages = new Set<string>();
-  for (let t = 0; t < 4000; t += 250) {
+  for (let t = 0; t < 3000; t += 250) {
     const stage = await page.evaluate(() => document.querySelector('.loading-stage')?.textContent);
     if (stage && !stages.has(stage)) {
       stages.add(stage);

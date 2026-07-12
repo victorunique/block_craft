@@ -9,6 +9,7 @@ export default function GameViewport() {
   const worldSeed = useGameStore((s) => s.worldSeed);
   const worldSize = useGameStore((s) => s.worldSize);
   const activeWorldId = useGameStore((s) => s.activeWorldId);
+  const screen = useGameStore((s) => s.screen);
   const settings = useSettingsStore((s) => s.settings);
 
   const [initialized, setInitialized] = useState(false);
@@ -28,7 +29,7 @@ export default function GameViewport() {
 
   const cm = getActiveChunkManager();
   const sp = getActiveSpawner();
-  if (!initialized || !cm || !sp) {
+  if (screen === 'loading' || !initialized || !cm || !sp) {
     return <div className="game-viewport" />;
   }
   return (

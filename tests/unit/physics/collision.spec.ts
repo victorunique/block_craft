@@ -39,7 +39,7 @@ describe('AABB Step-Climbing (PH-001)', () => {
     expect(finalVelX).toBe(0);
   });
 
-  it('1-block step up allows upward slide', () => {
+  it('1-block step up blocks movement without jump', () => {
     const map = new Map<string, number>();
     for (let x = -10; x <= 10; x++) map.set(`${x},64,0`, BlockId.STONE);
     map.set('2,65,0', BlockId.STONE);
@@ -51,8 +51,32 @@ describe('AABB Step-Climbing (PH-001)', () => {
       pos = r.newPos;
       vel = r.newVel;
     }
-    expect(pos[0]).toBeGreaterThan(1.6);
-    expect(pos[1]).toBeGreaterThan(65.0);
+    expect(pos[0]).toBeLessThan(1.71);
+    expect(pos[1]).toBe(65.0);
+  });
+
+  it('player can jump over 1-block step', () => {
+    const map = new Map<string, number>();
+    for (let x = -10; x <= 10; x++) map.set(`${x},64,0`, BlockId.STONE);
+    map.set('2,65,0', BlockId.STONE);
+    const get = getBlock(map);
+    let pos: [number, number, number] = [1.0, 65.0, 0.0];
+    let vel: [number, number, number] = [5, 0, 0];
+    
+    // First frame: request jump
+    let r = updateEntityPosition(pos, vel, [0.6, 1.8], 0.05, get, { jumpRequested: true });
+    pos = r.newPos;
+    vel = r.newVel;
+
+    // Simulate next few frames of jumping and moving forward
+    for (let i = 0; i < 10; i++) {
+      vel[0] = 5; // Re-apply movement key input
+      r = updateEntityPosition(pos, vel, [0.6, 1.8], 0.05, get);
+      pos = r.newPos;
+      vel = r.newVel;
+    }
+    expect(pos[0]).toBeGreaterThan(2.0);
+    expect(pos[1]).toBeGreaterThanOrEqual(66.0);
   });
 
   it('gravity terminates at y=0 (bedrock boundary)', () => {

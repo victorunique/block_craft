@@ -1,6 +1,7 @@
 import { CHUNK_SIZE, WORLD_DEPTH, BEDROCK_LEVEL } from '../../config/constants';
 import { ChunkWorkerClient, type ChunkMeshData } from '../rendering/chunkWorkerClient';
 import { recordChunkDelta, getInMemoryChunkDeltas } from '../save/saveManager';
+import { BlockId } from '../../config/blocks';
 
 export interface ChunkEntry {
   cx: number;
@@ -124,13 +125,15 @@ export class ChunkManager {
     return true;
   }
 
-  getBlockAt(x: number, y: number, z: number): number {
+  getBlockAt(x: number, y: number, z: number, treatUnloadedAsSolid = false): number {
     const half = this.worldSize / 2;
     if (x < -half || x >= half || z < -half || z >= half) return 0;
     if (y < BEDROCK_LEVEL || y >= WORLD_DEPTH) return 0;
     const { cx, cy, cz } = this.worldToChunk(x, y, z);
     const entry = this.chunks.get(this.key(cx, cy, cz));
-    if (!entry || entry.voxels.length === 0) return 0;
+    if (!entry || entry.voxels.length === 0) {
+      return treatUnloadedAsSolid ? BlockId.BEDROCK : 0;
+    }
     const { lx, ly, lz } = this.localCoords(x, y, z);
     return entry.voxels[this.voxelIndexLocal(lx, ly, lz)];
   }

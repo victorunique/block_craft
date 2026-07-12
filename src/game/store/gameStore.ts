@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { IGameState, GameSettings, SlotKind, InventoryItem } from './types';
+import { clearActiveWorld } from '../world/activeWorld';
 import {
   ARMOR_SIZE,
   HOTBAR_SIZE,
@@ -73,6 +74,7 @@ export const useGameStore = create<IGameState>((set, get) => ({
   setScreen: (screen) => set({ screen }),
 
   startGame: ({ worldId, worldName, seed, size, difficulty, playerPos }) => {
+    clearActiveWorld();
     const inv = emptyInventory();
     inv.hotbar[0] = createItem(5, 4);
     set({
@@ -107,6 +109,7 @@ export const useGameStore = create<IGameState>((set, get) => ({
   continueGame: async () => {
     const lastId = typeof localStorage !== 'undefined' ? localStorage.getItem('blockcraft_last_played') : null;
     if (!lastId) return false;
+    clearActiveWorld();
     set({ generated: true });
     const { loadWorld } = await import('../save/saveManager');
     const loaded = await loadWorld(lastId);
@@ -386,6 +389,7 @@ export const useGameStore = create<IGameState>((set, get) => ({
     })),
 
   quitToMenu: () => {
+    clearActiveWorld();
     set({
       screen: 'main-menu',
       isPaused: false,
