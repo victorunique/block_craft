@@ -214,7 +214,10 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
       [PLAYER_WIDTH, PLAYER_HEIGHT],
       cappedDt,
       (x, y, z) => chunkManager.getBlockAt(x, y, z, true),
-      { jumpRequested: jump && !lastJumpRef.current },
+      {
+        jumpRequested: jump && !lastJumpRef.current,
+        jumpHeld: jump,
+      },
     );
     lastJumpRef.current = jump;
     onGroundRef.current = result.isOnGround;

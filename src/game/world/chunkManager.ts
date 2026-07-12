@@ -10,6 +10,8 @@ export interface ChunkEntry {
   voxels: Uint8Array;
   mesh: ChunkMeshData | null;
   generation: Promise<ChunkEntry> | null;
+  meshVersion?: number;
+  targetVersion?: number;
 }
 
 export interface ChunkManagerOptions {
@@ -80,8 +82,8 @@ export class ChunkManager {
     if (entry && entry.mesh) return entry;
     if (entry && entry.generation) return entry.generation;
 
-    entry = { cx, cy, cz, voxels: new Uint8Array(0), mesh: null, generation: null };
-  entry.generation = (async () => {
+    entry = { cx, cy, cz, voxels: new Uint8Array(0), mesh: null, generation: null, meshVersion: 0, targetVersion: 0 };
+    entry.generation = (async () => {
     const data = await this.worker.generateChunk(this.seed, this.worldSize, cx, cy, cz);
     const safeBuffer = data.voxelBuffer.slice(0);
     const merged = new Uint8Array(safeBuffer);
@@ -93,9 +95,13 @@ export class ChunkManager {
       }
     }
     entry!.voxels = merged;
-    const mesh = await this.worker.compileMesh(merged.buffer.slice(0) as ArrayBuffer, cx, cy, cz, this.worldSize);
-    entry!.mesh = mesh;
-    entry!.generation = null;
+      const version = entry!.targetVersion ?? 0;
+      const mesh = await this.worker.compileMesh(merged.buffer.slice(0) as ArrayBuffer, cx, cy, cz, this.worldSize);
+      if (version >= (entry!.meshVersion ?? 0)) {
+        entry!.mesh = mesh;
+        entry!.meshVersion = version;
+      }
+      entry!.generation = null;
     return entry!;
   })();
     this.chunks.set(k, entry);
@@ -122,6 +128,7 @@ export class ChunkManager {
     entry.voxels[idx] = blockId;
     recordChunkDelta(this.getWorldIdFromAnywhere(), `${cx},${cy},${cz}`, idx, blockId);
     this.dirty.add(this.key(cx, cy, cz));
+    entry.targetVersion = (entry.targetVersion ?? 0) + 1;
     return true;
   }
 
@@ -146,8 +153,12 @@ export class ChunkManager {
         const [cx, cy, cz] = k.split(',').map(Number);
         const entry = this.chunks.get(k);
         if (!entry) return;
+        const version = entry.targetVersion ?? 0;
         const mesh = await this.worker.compileMesh(entry.voxels.buffer.slice(0) as ArrayBuffer, cx, cy, cz, this.worldSize);
-        entry.mesh = mesh;
+        if (version >= (entry.meshVersion ?? 0)) {
+          entry.mesh = mesh;
+          entry.meshVersion = version;
+        }
       }),
     );
     this.revision++;

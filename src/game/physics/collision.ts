@@ -1,6 +1,7 @@
 import type { AABB } from './types';
 import { collidesWithWorld, expandAABB, isInLiquid, type BlockLookup } from './aabb';
 import { GRAVITY, JUMP_VELOCITY, TERMINAL_VELOCITY, WATER_DRAG } from '../../config/constants';
+import { isLiquid } from '../../config/blocks';
 
 export interface PhysicsResult {
   newPos: [number, number, number];
@@ -20,6 +21,7 @@ export function createPlayerAABB(pos: [number, number, number], width = 0.6, hei
 export interface MoveOpts {
   inLiquidOverride?: boolean;
   jumpRequested?: boolean;
+  jumpHeld?: boolean;
 }
 
 export function updateEntityPosition(
@@ -44,9 +46,21 @@ export function updateEntityPosition(
   }
   if (vy < -TERMINAL_VELOCITY) vy = -TERMINAL_VELOCITY;
 
-  if (opts.jumpRequested) {
-    if (inLiquid) vy = JUMP_VELOCITY * 0.4;
-    else if (isGroundedAt(pos, getBlock)) vy = JUMP_VELOCITY;
+  const jump = opts.jumpRequested || (opts.jumpHeld && inLiquid);
+  if (jump) {
+    if (inLiquid) {
+      const cx = Math.floor(pos[0]);
+      const cz = Math.floor(pos[2]);
+      const headY = Math.floor(pos[1] + 1.2);
+      const headInLiquid = isLiquid(getBlock(cx, headY, cz));
+      if (!headInLiquid) {
+        vy = JUMP_VELOCITY;
+      } else {
+        vy = JUMP_VELOCITY * 0.4;
+      }
+    } else if (opts.jumpRequested && isGroundedAt(pos, getBlock)) {
+      vy = JUMP_VELOCITY;
+    }
   }
 
   const dx = vx * dt;

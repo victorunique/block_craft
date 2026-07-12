@@ -74,18 +74,25 @@ export function ChunkMesh({ entry }: ChunkMeshProps) {
     };
   }, [geometry, waterGeometry, crossGeometry]);
 
-  if (!atlas || !entry.mesh || !entry.mesh || entry.mesh.indices.length === 0) return null;
+  if (!atlas || !entry.mesh) return null;
+  const hasSolid = entry.mesh.indices.length > 0;
+  const hasWater = entry.mesh.waterIndices.length > 0;
+  const hasCross = entry.mesh.crossIndices.length > 0;
+  if (!hasSolid && !hasWater && !hasCross) return null;
+
   return (
     <group>
-      <mesh geometry={geometry} frustumCulled>
-        <meshLambertMaterial map={atlas.texture} vertexColors={false} />
-      </mesh>
-      {entry.mesh.waterIndices.length > 0 && (
+      {hasSolid && (
+        <mesh geometry={geometry} frustumCulled>
+          <meshLambertMaterial map={atlas.texture} vertexColors={false} />
+        </mesh>
+      )}
+      {hasWater && (
         <mesh geometry={waterGeometry} frustumCulled>
           <meshLambertMaterial map={atlas.texture} transparent opacity={0.7} depthWrite={false} />
         </mesh>
       )}
-      {entry.mesh.crossIndices.length > 0 && (
+      {hasCross && (
         <mesh geometry={crossGeometry} frustumCulled>
           <meshLambertMaterial map={atlas.texture} transparent depthWrite={false} side={THREE.DoubleSide} />
         </mesh>

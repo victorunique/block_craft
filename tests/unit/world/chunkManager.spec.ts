@@ -32,3 +32,61 @@ describe('ChunkManager getBlockAt', () => {
     expect(cm.getBlockAt(0, 60, 0, true)).toBe(BlockId.BEDROCK);
   });
 });
+
+describe('ChunkManager mesh compilation concurrency', () => {
+  it('does not overwrite newer mesh with older mesh if resolved out of order', async () => {
+    const mockWorker: any = {
+      generateChunk: vi.fn().mockResolvedValue({ chunkX: 8, chunkY: 4, chunkZ: 8, voxelBuffer: new ArrayBuffer(4096) }),
+      compileMesh: vi.fn(),
+      dispose: vi.fn(),
+    };
+
+    const cm = new ChunkManager({
+      seed: 42,
+      worldSize: 256,
+      renderDistance: 2,
+      worker: mockWorker,
+    });
+
+    // Mock initial chunk load compileMesh call to resolve immediately
+    mockWorker.compileMesh.mockResolvedValueOnce({ positions: new Float32Array([0]) } as any);
+    await cm.ensureChunk(8, 4, 8);
+
+    // Mock compileMesh to simulate out-of-order resolution
+    let firstResolve: any;
+    let secondResolve: any;
+
+    const firstPromise = new Promise((resolve) => {
+      firstResolve = () => resolve({ positions: new Float32Array([1]) } as any);
+    });
+    const secondPromise = new Promise((resolve) => {
+      secondResolve = () => resolve({ positions: new Float32Array([2]) } as any);
+    });
+
+    mockWorker.compileMesh.mockImplementationOnce(() => firstPromise);
+    mockWorker.compileMesh.mockImplementationOnce(() => secondPromise);
+
+    // Perform first update
+    cm.setBlockAt(0, 64, 0, 4); // targetVersion = 1
+    const rebuild1 = cm.rebuildDirty(); // launches compileMesh 1 (version 1)
+
+    // Perform second update
+    cm.setBlockAt(0, 64, 0, 2); // targetVersion = 2
+    const rebuild2 = cm.rebuildDirty(); // launches compileMesh 2 (version 2)
+
+    // Resolve compilation 2 first (version 2)
+    secondResolve();
+    await rebuild2;
+
+    // Resolve compilation 1 second (version 1)
+    firstResolve();
+    await rebuild1;
+
+    // Verify chunk mesh is compileMesh 2's mesh, not compileMesh 1's
+    const blockValue = cm.getBlockAt(0, 64, 0); // verify block is 2
+    expect(blockValue).toBe(2);
+
+    const chunk = (cm as any).chunks.get('8,4,8');
+    expect(chunk.mesh.positions[0]).toBe(2); // mesh 2 positions starts with 2
+  });
+});
