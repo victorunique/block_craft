@@ -1,7 +1,7 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import { useGameStore } from '../store/gameStore';
 import type { SaveBackupFormat } from '../store/types';
-import { AUTOSAVE_INTERVAL_MS } from '../../config/constants';
+import { AUTOSAVE_INTERVAL_MS, STORAGE_VERSION } from '../../config/constants';
 
 const DB_NAME = 'BlockCraftDB';
 const DB_VERSION = 1;
@@ -116,11 +116,7 @@ export function recordChunkDelta(worldId: string, chunkKey: string, localIndex: 
     bag = {};
     inMemoryChunkDeltas.set(`${worldId}|${chunkKey}`, bag);
   }
-  if (blockId === 0) {
-    delete bag[String(localIndex)];
-  } else {
-    bag[String(localIndex)] = blockId;
-  }
+  bag[String(localIndex)] = blockId;
 }
 
 export function getInMemoryChunkDeltas(): Map<string, Record<string, number>> {
@@ -190,7 +186,10 @@ export async function loadWorld(worldId: string): Promise<boolean> {
     inMemoryChunkDeltas.set(`${worldId}|${key}`, d.deltas);
   }
   useGameStore.setState({
-    screen: 'game',
+    generated: true,
+    screen: 'loading',
+    loadingProgress: 0.05,
+    loadingStage: 'Loading Your World…',
     activeWorldId: meta.worldId,
     worldName: meta.name,
     worldSeed: meta.seed,
@@ -232,7 +231,14 @@ export async function deleteWorld(worldId: string): Promise<void> {
 
 export async function exportWorldSave(worldId: string): Promise<Blob> {
   const db = await getDb();
-  const meta = await db.get('worlds', worldId);
+  let meta = await db.get('worlds', worldId);
+  if (!meta) {
+    const s = useGameStore.getState();
+    if (s.activeWorldId === worldId) {
+      await saveCurrentWorldNow();
+      meta = await db.get('worlds', worldId);
+    }
+  }
   if (!meta) throw new Error('world not found');
   const inv = await db.get('inventories', worldId);
   const allDeltas = await db.getAllFromIndex('chunk_deltas', 'by_world', worldId);
@@ -241,7 +247,7 @@ export async function exportWorldSave(worldId: string): Promise<Blob> {
     chunkDeltas[`${d.x}_${d.y}_${d.z}`] = Object.entries(d.deltas).map(([k, v]) => [Number(k), v as number]);
   }
   const payload: SaveBackupFormat = {
-    version: '1.0',
+    version: STORAGE_VERSION,
     metadata: {
       worldId: meta.worldId,
       worldName: meta.name,
@@ -270,7 +276,9 @@ export async function exportWorldSave(worldId: string): Promise<Blob> {
 }
 
 export async function importWorldSave(fileData: SaveBackupFormat): Promise<string> {
-  if (!fileData || fileData.version !== '1.0') throw new Error('Invalid save format version');
+  if (!fileData || (fileData.version !== STORAGE_VERSION && fileData.version !== '1.0')) {
+    throw new Error('Invalid save format version');
+  }
   if (!fileData.metadata || !fileData.inventory) throw new Error('Invalid save format');
   const worldId = fileData.metadata.worldId;
   const db = await getDb();

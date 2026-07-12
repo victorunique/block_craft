@@ -1,4 +1,4 @@
-import { CHUNK_SIZE } from '../../config/constants';
+import { CHUNK_SIZE, WORLD_DEPTH, BEDROCK_LEVEL } from '../../config/constants';
 import { ChunkWorkerClient, type ChunkMeshData } from '../rendering/chunkWorkerClient';
 import { recordChunkDelta, getInMemoryChunkDeltas } from '../save/saveManager';
 
@@ -108,7 +108,7 @@ export class ChunkManager {
   setBlockAt(x: number, y: number, z: number, blockId: number): boolean {
     const half = this.worldSize / 2;
     if (x < -half || x >= half || z < -half || z >= half) return false;
-    if (y < 0 || y >= 128) return false;
+    if (y < BEDROCK_LEVEL || y >= WORLD_DEPTH) return false;
     const { cx, cy, cz } = this.worldToChunk(x, y, z);
     const { lx, ly, lz } = this.localCoords(x, y, z);
     const entry = this.chunks.get(this.key(cx, cy, cz));
@@ -127,7 +127,7 @@ export class ChunkManager {
   getBlockAt(x: number, y: number, z: number): number {
     const half = this.worldSize / 2;
     if (x < -half || x >= half || z < -half || z >= half) return 0;
-    if (y < 0 || y >= 128) return 0;
+    if (y < BEDROCK_LEVEL || y >= WORLD_DEPTH) return 0;
     const { cx, cy, cz } = this.worldToChunk(x, y, z);
     const entry = this.chunks.get(this.key(cx, cy, cz));
     if (!entry || entry.voxels.length === 0) return 0;
@@ -163,7 +163,7 @@ export class ChunkManager {
           const ccy = cy + dy;
           if (cx < 0 || cx * CHUNK_SIZE >= this.worldSize) continue;
           if (cz < 0 || cz * CHUNK_SIZE >= this.worldSize) continue;
-          if (ccy < 0 || ccy >= 8) continue;
+          if (ccy < 0 || ccy >= WORLD_DEPTH / CHUNK_SIZE) continue;
           if (dx * dx + dz * dz > r * r + 1) continue;
           tasks.push(this.ensureChunk(cx, ccy, cz));
         }

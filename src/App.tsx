@@ -4,6 +4,7 @@ import WorldCreation from './game/ui/WorldCreation/WorldCreation';
 import LoadingOverlay from './game/ui/LoadingOverlay/LoadingOverlay';
 import Hud from './game/ui/Hud/Hud';
 import InventoryDialog from './game/ui/Inventory/InventoryDialog';
+import SmeltingDialog from './game/ui/Inventory/SmeltingDialog';
 import PauseMenu from './game/ui/PauseMenu/PauseMenu';
 import GameOver from './game/ui/GameOver/GameOver';
 import GameViewport from './game/ui/Hud/GameViewport';
@@ -18,6 +19,7 @@ export default function App() {
   const isPaused = useGameStore((s) => s.isPaused);
   const health = useGameStore((s) => s.health);
   const showInventory = useGameStore((s) => s.showInventory);
+  const showSmelting = useGameStore((s) => s.showSmelting);
   const showGameOver = useGameStore((s) => s.showGameOver);
   const [bootstrapped, setBootstrapped] = useState(false);
 
@@ -53,19 +55,14 @@ export default function App() {
       {screen === 'main-menu' && <MainMenu />}
       {screen === 'world-creation' && <WorldCreation />}
       {screen === 'loading' && <LoadingOverlay />}
-      {screen === 'game' && (
+      {(screen === 'game' || screen === 'paused') && (
         <>
           <GameViewport />
           <Hud />
-          {showInventory && <InventoryDialog />}
-          {(isPaused) && <PauseMenu />}
+          {showInventory && !gameOver && <InventoryDialog />}
+          {showSmelting && !gameOver && <SmeltingDialog />}
           {gameOver && <GameOver />}
-        </>
-      )}
-      {screen === 'paused' && (
-        <>
-          <Hud />
-          <PauseMenu />
+          {isPaused && !gameOver && <PauseMenu />}
         </>
       )}
       <AutoSaveToast />

@@ -23,6 +23,7 @@ import {
   swapGridSlots,
 } from '../inventory/slots';
 import { RECIPES } from '../crafting/recipes';
+import { smelt as runSmelt } from '../crafting/smelting';
 
 const defaultSettings: GameSettings = {
   graphicsQuality: 'medium',
@@ -44,6 +45,7 @@ export const useGameStore = create<IGameState>((set, get) => ({
   screen: 'main-menu',
   isPaused: false,
   showInventory: false,
+  showSmelting: false,
   showGameOver: false,
   activeWorldId: null,
   worldName: 'My World',
@@ -92,20 +94,26 @@ export const useGameStore = create<IGameState>((set, get) => ({
       dayCount: 1,
       isPaused: false,
       showInventory: false,
+      showSmelting: false,
       showGameOver: false,
       pauseReason: null,
       screen: 'loading',
       loadingProgress: 0,
       loadingStage: 'Sculpting hills...',
+      generated: false,
     });
   },
 
   continueGame: async () => {
     const lastId = typeof localStorage !== 'undefined' ? localStorage.getItem('blockcraft_last_played') : null;
     if (!lastId) return false;
+    set({ generated: true });
     const { loadWorld } = await import('../save/saveManager');
     const loaded = await loadWorld(lastId);
-    if (!loaded) return false;
+    if (!loaded) {
+      set({ generated: false });
+      return false;
+    }
     return true;
   },
 
@@ -203,6 +211,28 @@ export const useGameStore = create<IGameState>((set, get) => ({
 
   setOxygen: (oxygen) =>
     set(() => ({ oxygen: Math.max(0, Math.min(MAX_OXYGEN, oxygen)) })),
+
+  tickOxygen: (deltaSeconds, isHeadUnderwater) => {
+    const s = get();
+    if (isHeadUnderwater) {
+      const next = Math.max(0, s.oxygen - deltaSeconds * 5);
+      const updates: Partial<IGameState> = { oxygen: next };
+      if (next <= 0 && s.health > 0) {
+        const dmg = Math.max(1, Math.floor(deltaSeconds * 2));
+        const newHealth = Math.max(0, s.health - dmg);
+        updates.health = newHealth;
+        if (newHealth <= 0) {
+          updates.isPaused = true;
+          updates.pauseReason = 'health';
+          updates.screen = 'paused';
+          updates.showGameOver = true;
+        }
+      }
+      set(updates);
+    } else if (s.oxygen < MAX_OXYGEN) {
+      set({ oxygen: Math.min(MAX_OXYGEN, s.oxygen + deltaSeconds * 10) });
+    }
+  },
 
   updatePlayerTransform: (pos, rot) => set({ playerPos: pos, playerRot: rot }),
 
@@ -321,6 +351,18 @@ export const useGameStore = create<IGameState>((set, get) => ({
       return { [slotKind]: arr } as Partial<IGameState>;
     }),
 
+  smeltItem: (recipeId) => {
+    const s = get();
+    const grid = { hotbar: [...s.hotbar], storage: [...s.storage], armor: [...s.armor] };
+    const r = runSmelt(grid, recipeId, true);
+    if (!r.result.success) return false;
+    set({ hotbar: r.grid.hotbar, storage: r.grid.storage, armor: r.grid.armor });
+    return true;
+  },
+
+  openSmelting: (open) =>
+    set((s) => ({ showSmelting: open ?? !s.showSmelting })),
+
   updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
 
   setLoading: (progress, stage) =>
@@ -348,6 +390,7 @@ export const useGameStore = create<IGameState>((set, get) => ({
       screen: 'main-menu',
       isPaused: false,
       showInventory: false,
+      showSmelting: false,
       showGameOver: false,
       pauseReason: null,
     });

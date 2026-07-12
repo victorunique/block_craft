@@ -7,6 +7,43 @@
  * recorded in artifacts/Documentation_Conflict_Report.md.
  */
 
+export const ATLAS_TILE = {
+  STONE: [1, 0] as [number, number],
+  DIRT: [2, 0] as [number, number],
+  GRASS_TOP: [3, 0] as [number, number],
+  GRASS_SIDE: [0, 1] as [number, number],
+  COBBLESTONE: [4, 0] as [number, number],
+  WOOD_TOP: [5, 0] as [number, number],
+  WOOD_SIDE: [6, 0] as [number, number],
+  PINE_WOOD_TOP: [7, 0] as [number, number],
+  PINE_WOOD_SIDE: [8, 0] as [number, number],
+  PLANKS: [9, 0] as [number, number],
+  SAND: [10, 0] as [number, number],
+  SANDSTONE: [11, 0] as [number, number],
+  SNOW_LAYER: [12, 0] as [number, number],
+  ICE: [13, 0] as [number, number],
+  GLASS: [14, 0] as [number, number],
+  BRICK: [15, 0] as [number, number],
+  LEAVES: [0, 2] as [number, number],
+  PINE_LEAVES: [1, 2] as [number, number],
+  COAL_ORE: [2, 2] as [number, number],
+  IRON_ORE: [3, 2] as [number, number],
+  GOLD_ORE: [4, 2] as [number, number],
+  DIAMOND_ORE: [5, 2] as [number, number],
+  BEDROCK: [6, 2] as [number, number],
+  CLAY: [7, 2] as [number, number],
+  FURNACE_TOP: [8, 2] as [number, number],
+  FURNACE_SIDE: [9, 2] as [number, number],
+  FURNACE_BOTTOM: [10, 2] as [number, number],
+  CACTUS_TOP: [11, 2] as [number, number],
+  CACTUS_SIDE: [12, 2] as [number, number],
+  CACTUS_BOTTOM: [13, 2] as [number, number],
+  FLOWER_RED: [14, 2] as [number, number],
+  FLOWER_YELLOW: [15, 2] as [number, number],
+  WATER: [11, 1] as [number, number],
+  TORCH: [12, 3] as [number, number],
+};
+
 export const BlockId = {
   AIR: 0,
   BEDROCK: 1,
@@ -137,6 +174,7 @@ export const SOLID_BLOCKS = new Set<number>([
   BlockId.PINE_WOOD,
   BlockId.PINE_LEAVES,
   BlockId.SANDSTONE,
+  BlockId.GLASS,
 ]);
 
 export const TRANSPARENT_BLOCKS = new Set<number>([

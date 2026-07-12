@@ -1,25 +1,41 @@
 import { useGameStore } from '../../store/gameStore';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useViewport } from '../../../hooks/useViewport';
 import { getBiomeName } from '../../world/biome';
 import MobileControls from '../MobileControls/MobileControls';
 import ControlsHint from './ControlsHint';
 import TutorialOverlay from './TutorialOverlay';
+import ItemIcon from '../common/ItemIcon';
+import { DurabilityBar, getToolMaxDurability } from '../common/DurabilityBar';
 import './hud.css';
 
 function HeartsGrid({ health }: { health: number }) {
-  const slots = [];
+  const prevHealthRef = useRef(health);
+  const [shakeNonce, setShakeNonce] = useState(0);
+  const slots: { state: 'full' | 'half' | 'empty'; idx: number }[] = [];
   for (let i = 0; i < 10; i++) {
     const v = health - i * 2;
     let state: 'full' | 'half' | 'empty' = 'empty';
     if (v >= 2) state = 'full';
     else if (v >= 1) state = 'half';
-    slots.push(state);
+    slots.push({ state, idx: i });
   }
+
+  useEffect(() => {
+    if (health < prevHealthRef.current) {
+      setShakeNonce((n) => n + 1);
+    }
+    prevHealthRef.current = health;
+  }, [health]);
+
   return (
     <div className="hearts" aria-label={`Health ${health} of 20`}>
-      {slots.map((s, i) => (
-        <span key={i} className={`heart ${s}`} aria-hidden>❤</span>
+      {slots.map((s) => (
+        <span
+          key={`${s.idx}-${shakeNonce}`}
+          className={`heart ${s.state} shake`}
+          aria-hidden
+        >❤</span>
       ))}
     </div>
   );
@@ -77,7 +93,14 @@ function Hotbar() {
         >
           {item && (
             <>
+              <ItemIcon blockId={item.blockId} size={28} />
               <span className="stack-count">{item.count}</span>
+              {item.durability !== undefined && (
+                <DurabilityBar
+                  durability={item.durability}
+                  maxDurability={getToolMaxDurability(item.blockId)}
+                />
+              )}
             </>
           )}
         </button>

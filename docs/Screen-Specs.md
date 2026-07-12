@@ -142,11 +142,11 @@ Date: 2026-07-11
 ### 4.2. Layout & Hierarchy
 * **Layout:** Non-intrusive transparent layout overlaid on the Three.js viewport canvas. Responsive elements pinned to screen edges.
 * **Visual Hierarchy:**
-  * **Top Left:** Current Time of Day wheel indicator, Active Biome label, and FPS counter.
+  * **Top Left:** Current Time of Day wheel indicator and Active Biome label.
+  * **Top Right:** FPS counter. On mobile viewports, the same Top Right also hosts the Touch Menu controls (Inventory button, Pause button).
   * **Center:** Crosshair (subtle gray plus sign `+` at the center of the screen).
   * **Bottom Center:** Survival status bars stacked directly above the Item Hotbar.
   * **Bottom Right:** Autosave notification disk icon.
-  * **Top Right:** Touch Menu controls (Inventory button, Pause button) - *visible on mobile viewports only*.
   * **Left Side & Right Side:** Virtual Joystick (movement) and Touch Action Buttons (Jump, Place/Interact, Mine/Attack) - *visible on mobile viewports only*.
 
 ### 4.3. Screen Components

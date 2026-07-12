@@ -23,6 +23,7 @@ export interface IGameState {
   screen: Screen;
   isPaused: boolean;
   showInventory: boolean;
+  showSmelting: boolean;
   showGameOver: boolean;
   activeWorldId: string | null;
   worldName: string;
@@ -68,6 +69,7 @@ export interface IGameState {
   tickHunger: (deltaSeconds: number, difficulty: Difficulty) => void;
   eatFood: (slotKind: SlotKind, slotIndex: number) => boolean;
   setOxygen: (oxygen: number) => void;
+  tickOxygen: (deltaSeconds: number, isHeadUnderwater: boolean) => void;
   updatePlayerTransform: (pos: [number, number, number], rot: [number, number]) => void;
 
   setActiveSlot: (slot: number) => void;
@@ -76,7 +78,9 @@ export interface IGameState {
   swapInventorySlots: (fromIdx: number, fromType: SlotKind, toIdx: number, toType: SlotKind) => void;
   splitStack: (fromKind: SlotKind, fromIdx: number) => boolean;
   craftItem: (recipeId: string) => boolean;
+  smeltItem: (recipeId: string) => boolean;
   applyDamageToTool: (slotKind: SlotKind, slotIndex: number, amount: number) => void;
+  openSmelting: (open?: boolean) => void;
 
   updateSettings: (patch: Partial<GameSettings>) => void;
 

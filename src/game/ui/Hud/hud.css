@@ -142,9 +142,21 @@
   font-size: 22px;
   color: var(--color-danger);
   opacity: 0.25;
+  display: inline-block;
 }
 .heart.half { opacity: 0.6; }
 .heart.full { opacity: 1; }
+.heart.shake {
+  animation: heart-shake 0.32s ease-in-out;
+}
+
+@keyframes heart-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
 
 .hunger {
   display: flex;
@@ -180,6 +192,45 @@
 .hotbar .item-slot {
   width: 48px;
   height: 48px;
+  position: relative;
+}
+
+.hotbar .item-slot.selected {
+  border-color: var(--color-secondary);
+  box-shadow: 0 0 12px rgba(255, 217, 61, 0.6);
+  transform: scale(1.10);
+}
+
+.item-icon {
+  display: inline-block;
+  pointer-events: none;
+}
+
+.item-icon-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  user-select: none;
+}
+
+.durability-bar {
+  position: absolute;
+  bottom: 4px;
+  left: 6px;
+  right: 6px;
+  height: 3px;
+  background-color: rgba(0, 0, 0, 0.25);
+  border-radius: 2px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.durability-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.2s ease, background-color 0.2s ease;
 }
 
 @media (max-width: 480px) {

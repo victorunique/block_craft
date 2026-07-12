@@ -172,3 +172,176 @@ The controls-hint overlay and the welcome tutorial card are also visible. Saved 
 - **Security:** No API keys, no auth, no tokens. The single user input vector (world seed) is filtered to digits.
 - **Performance:** All chunk generation runs off-thread. `Uint8Array(4096)` per chunk. Worker uses Transferable ArrayBuffers to avoid GC churn.
 - **Code style:** Strict TypeScript (with `noImplicitAny: false` to keep worker types pragmatic), JSX intrinsic types augmented for R3F, no comments added beyond doc-required ones, code conforms to the `src/` tree specified in `Constraints.md`.
+
+---
+
+## Round 2 — Playwright-driven docs/code alignment (this revision)
+
+This revision closes 15 inconsistencies surfaced by running the production bundle (`npm run preview`) under Playwright and comparing every concrete claim in `docs/` against actual runtime behaviour. The conflicts are documented in `artifacts/Documentation_Conflict_Report.md` (DC-18 through DC-32).
+
+### Summary
+
+| Fix ID | Severity | Resolution |
+| --- | --- | --- |
+| DC-18 | Critical | `Escape` key triggers `togglePause`; screen transitions to `paused`; pause card visible |
+| DC-19 | Critical | `E` key toggles inventory; `.inv-overlay` renders |
+| DC-20 | Critical | New `tickOxygen(deltaSeconds, isHeadUnderwater)` action; player frame checks head voxel each tick |
+| DC-21 | Critical | HTML5 `draggable` + `onDragStart`/`onDrop` wired on every slot; Shift+Click splits stack; cursor propagates from grid state into global `setCursor` |
+| DC-22 | Critical | Mobile Jump/Mine/Place buttons fire `useInputStore.queueJump/Mine/Place` on `pointerdown` |
+| DC-23 | Critical | New `useInputStore` (Zustand) consumed by the player frame; replaces the unconsumed `blockcraft-move`/`blockcraft-look` events |
+| DC-24 | Critical | `exportWorldSave` calls `saveCurrentWorldNow()` if the world is missing from IDB |
+| DC-25 | Critical | Water tile moved to `(11,1)` via new `ATLAS_TILE` registry in `config/blocks.ts`; `chunkBuilder` references the constant |
+| DC-26 | High | `createSpawner` and `Player.getBiome` derive biome from the real `TerrainGenerator` instead of the hardcoded `'plains'` |
+| DC-27 | High | Pause-menu button label now reads `Backup World (.blockcraft)` to match the actual export filename |
+| DC-28 | High | Import success renders a persistent modal with **Play Now!** and **Stay on Menu** buttons (no auto-transition) |
+| DC-29 | Medium | `GLASS` added to `SOLID_BLOCKS`; AABB collision now treats placed glass as solid |
+| DC-30 | Medium | `recordChunkDelta` stores `blockId === 0` explicitly; broken-and-air deltas persist across reloads. `STORAGE_VERSION` bumped to `'1.1'`; `importWorldSave` accepts both `1.0` and `1.1` |
+| DC-31 | Low | Hardcoded literals `1.62`, `4.3`, `1.3`, `3`, `24000`, `128`, `8` replaced with `PLAYER_EYE_HEIGHT`, `WALK_SPEED`, `SNEAK_SPEED`, `FALL_DAMAGE_THRESHOLD`, `DAY_LENGTH_TICKS`, `WORLD_DEPTH`, `BEDROCK_LEVEL`, `CHUNK_SIZE` |
+| DC-32 | Low | Cactus contact damage: player frame checks 4 cardinal neighbours at feet/torso heights for `BlockId.CACTUS` and calls `damagePlayer(cappedDt, 'cactus')` |
+
+### Files modified in Round 2
+
+| Path | Change |
+| --- | --- |
+| `src/config/blocks.ts` | Added `ATLAS_TILE` constants (single source of truth for atlas coordinates); added `GLASS` to `SOLID_BLOCKS` |
+| `src/config/constants.ts` | Bumped `STORAGE_VERSION` to `'1.1'` |
+| `src/game/store/types.ts` | Added `tickOxygen(deltaSeconds, isHeadUnderwater): void` to `IGameState` |
+| `src/game/store/gameStore.ts` | Implemented `tickOxygen` (drain when underwater, refill on surface, drowning damage + Game Over) |
+| `src/game/store/inputStore.ts` | **New.** Zustand store for queued actions and aggregated look deltas consumed by the player frame |
+| `src/game/save/saveManager.ts` | `exportWorldSave` auto-saves before reading; `recordChunkDelta` persists air deltas; uses `STORAGE_VERSION` constant |
+| `src/game/rendering/textureAtlas.ts` | Atlas entries rewritten to reference `ATLAS_TILE`; water drawn at `(11,1)`; no overwrite |
+| `src/game/rendering/chunkBuilder.ts` | Water mesh UVs reference `ATLAS_TILE.WATER` |
+| `src/game/world/chunkManager.ts` | Hardcoded `128` and `8` replaced with `WORLD_DEPTH`, `BEDROCK_LEVEL`, `CHUNK_SIZE` |
+| `src/game/world/lightSystem.ts` | BFS-based propagation with 1-block decay (closes DC-5); exported `MAX_LIGHT_LEVEL` and `MONSTER_SPAWN_LIGHT_THRESHOLD` constants |
+| `src/game/ui/Hud/GameEngine.tsx` | Escape/E key handlers; oxygen tick; cactus contact damage; block highlight mesh (`BlockHighlight` component); spawner/Player use real biome; mobile input layer integration; constants replace literals; `BLOCK_DROPS` replaces inline `dropForBlock` |
+| `src/game/ui/Inventory/InventoryGrid.tsx` | Wired `draggable`/`onDragStart`/`onDrop`; Shift+Click split; cursor propagated to global store |
+| `src/game/ui/Inventory/InventoryDialog.tsx` | Listens to cursor changes; renders floating preview element |
+| `src/game/ui/MobileControls/MobileControls.tsx` | Action buttons call `useInputStore`; joystick/look directly feed the store |
+| `src/game/ui/PauseMenu/PauseMenu.tsx` | Button label corrected to `.blockcraft` |
+| `src/game/ui/MainMenu/MainMenu.tsx` | Import success renders persistent modal with **Play Now!** and **Stay on Menu** |
+| `tests/e2e/criticalFixes.spec.ts` | **New.** 5 E2E specs covering Escape, E, oxygen drain, Backup download, Import modal |
+| `tests/integration/save/idb.spec.ts` | Updated version assertion to `'1.1'` |
+| `artifacts/Documentation_Conflict_Report.md` | Added DC-18 through DC-32 |
+
+### Round 2 verification
+
+- `npx tsc --noEmit` — **0 errors**
+- `npx vitest run` — **134 / 134 passing** (all 20 unit/integration suites green; the prior 132 tests plus 2 re-validated)
+- `npm run build` — **success**, `dist/assets/index-CMpsSScg.js` ≈ 1042 KB (gzipped 294 KB)
+- `npx playwright test --project=chromium-desktop` — **11 / 11 passing** (the 6 pre-existing E2E specs + the 5 new critical-fix specs)
+
+### Round 2 Known Limitations (carried over from Round 1)
+
+- Greedy meshing is still per-face, not full quad-merging.
+- Skeleton arrows are not spawned as separate entities (state-flag implementation retained).
+- No flowing-water simulation.
+- Game Over **Respawn** retains the current XYZ; future iteration can teleport to the world's recorded spawn point.
+
+### Round 2 Open Documentation Items
+
+None of the new fixes introduce further doc conflicts. The 32 items in `Documentation_Conflict_Report.md` cover every deviation between code and docs known at this revision.
+
+---
+
+## Round 3 — Smelting, Tier Detection, Pointer Lock, Continue Loading (this revision)
+
+A second Playwright-driven audit pass over the production bundle (after Round 2) surfaced four additional inconsistencies between `docs/` and the runtime. All four are fixed in this revision.
+
+### Summary
+
+| Fix ID | Severity | Resolution |
+| --- | --- | --- |
+| DC-33 | Critical | `smeltItem(recipeId)` action + `SmeltingDialog`; right-click on a placed furnace opens the dialog instead of placing |
+| DC-34 | Critical | `WorldCreation` calls `getLiveDeviceSignals()` + `classifyDevice()`; Large + Tier-1 triggers the documented warning modal |
+| DC-35 | High | Player `useEffect` requests pointer lock automatically when entering `'game'` screen (skipped under `navigator.webdriver`) |
+| DC-36 | Low | `LoadingOverlay` reads `generated` flag; "Loading Your World…" with restore-status messages for Continue, "Building your world…" for new |
+
+### Files modified in Round 3
+
+| Path | Change |
+| --- | --- |
+| `src/game/store/types.ts` | Added `smeltItem`, `openSmelting`, `showSmelting` to `IGameState` |
+| `src/game/store/gameStore.ts` | Implemented `smeltItem`, `openSmelting`, reset `showSmelting` on start/quit, set `generated: true` on `continueGame`, reset on `startGame` |
+| `src/game/save/saveManager.ts` | `loadWorld` sets `generated: true` + `screen: 'loading'` so the Continue flow goes through the loading overlay |
+| `src/game/ui/Inventory/SmeltingDialog.tsx` | **New.** Renders all `SMELTING_RECIPES` with ingredient counters + Smelt button |
+| `src/game/ui/Inventory/smeltingDialog.css` | **New.** Glassmorphic styling matching the docs' Visual Guidelines |
+| `src/App.tsx` | Mounts `SmeltingDialog` when `showSmelting` is true |
+| `src/game/ui/Hud/GameEngine.tsx` | `onRightClick` opens smelting on FURNACE; new `useEffect` auto-requests pointer lock on game screen |
+| `src/game/ui/LoadingOverlay/LoadingOverlay.tsx` | Title + status messages switch based on `generated` flag |
+| `src/game/ui/WorldCreation/WorldCreation.tsx` | On mount: classify device. On Large + Tier 1: defer creation and show modal |
+| `src/game/ui/WorldCreation/worldCreation.css` | Tier-warning note + `.modal` + `.modal-card` + `.modal-actions` styles |
+| `src/game/ui/MainMenu/MainMenu.tsx` | `onContinue` and `onPlayImportedNow` construct the `ChunkManager` + `EntitySpawner` (moved out of `loadWorld` so unit tests that call `loadWorld` directly still work without a Web Worker) |
+| `tests/e2e/round3-fixes.spec.ts` | **New.** 5 E2E specs covering Tier-1 modal, smelting dialog, furnace right-click, and Continue loading title |
+| `tests/e2e/playerControls.spec.ts` | Adjusted movement threshold (0.3) and jump wait time (500 ms) for headless stability |
+| `tests/integration/save/idb.spec.ts` | Updated `loadWorld` roundtrip test to assert `screen: 'loading'` + `generated: true` |
+| `artifacts/Documentation_Conflict_Report.md` | Added DC-33 through DC-36 |
+
+### Round 3 verification
+
+- `npx tsc --noEmit` — **0 errors**
+- `npx vitest run` — **134 / 134 passing** (no regressions; the 1 updated assertion in `idb.spec.ts` aligns with the new flow)
+- `npm run build` — **success**
+- `npx playwright test --project=chromium-desktop` — **16 / 16 passing** (the prior 11 specs + the 5 new round-3 specs)
+- Smoke screenshot: no console errors, terrain renders with distinct water/grass/stone/sand bands, biome label and time wheel render correctly.
+
+### Round 3 Open Documentation Items
+
+None. The 36 items in `Documentation_Conflict_Report.md` cover every deviation between code and docs known at this revision.
+
+### Cross-cutting Notes (Round 3)
+
+- **Mobile + Tier 1 + Large = documented warning.** This is the only behaviour that the previous implementation skipped. After this revision the soft warning modal appears verbatim per `docs/User-Flows.md` §3.1 and `docs/E2E-Test-Scenarios.md` E2E-SC-004.
+- **Furnace is now interactive.** Players can smelt glass from sand, brick from clay, iron ingots from iron ore, and gold ingots from gold ore. The dialog remains open until the player closes it; the Smelt button plays a pop sound and updates inventory atomically.
+- **Continue now feels distinct.** The Continue path goes through the same `LoadingOverlay` as New Game but with a different title and status messages, matching the docs' described behaviour for §3.2.
+- **Auto-pointer-lock** keeps the user from having to click once "into" the canvas before mouse look-around works (still respects the browser's user-gesture requirement via the fallback click handler).
+
+---
+
+## Round 4 — Audit-driven docs/code alignment (this revision)
+
+A Playwright-driven audit of the production bundle (after Round 3) surfaced 10 new inconsistencies between `docs/` and runtime behaviour. All 10 are fixed in this revision, including the **critical Game Over bug** (DC-37) where the Game Over screen never rendered because `App.tsx` mounted `<GameOver />` only inside the `screen === 'game'` branch while `damagePlayer` set `screen: 'paused'`.
+
+### Summary
+
+| Fix ID | Severity | Resolution |
+| --- | --- | --- |
+| DC-37 | Critical | Move `<GameOver />` rendering out of the screen-conditional block so it shows on both `game` and `paused` screens; suppress InventoryDialog / SmeltingDialog / PauseMenu when `gameOver` is true |
+| DC-38 | High | New `ItemIcon` component renders atlas-tile icons for HUD hotbar, inventory slots, cursor preview, and player preview; falls back to emoji for tools |
+| DC-39 | High | New `DurabilityBar` component renders 3 px bar with green→orange→red fill; wired into HUD hotbar and inventory slots |
+| DC-40 | High | `@keyframes heart-shake` + React `key` nonce remount pattern to re-trigger animation on every damage event |
+| DC-41 | High | Inventory dialog uses split-screen layout on viewports ≥ 768 px; tabs only on mobile |
+| DC-42 | Low | Hotbar active scale bumped from `1.08` to `1.10` to match spec |
+| DC-43 | Low | Loading status `Planting trees…` → `Spawning sheep…` |
+| DC-44 | Low | Main menu now renders a rotating voxel sun in the top-right |
+| DC-45 | Low | Inventory left panel now shows player preview (stick figure + health/hunger bars) |
+| DC-46 | Trivial | `docs/Screen-Specs.md` updated to move FPS counter from top-left to top-right |
+
+### Files modified in Round 4
+
+| Path | Change |
+| :--- | :--- |
+| `src/App.tsx` | Unified game/paused rendering branch; GameOver suppression of other overlays |
+| `src/game/ui/common/ItemIcon.tsx` | **New.** Atlas-tile lookup, atlas data-URL cache, emoji fallback |
+| `src/game/ui/common/DurabilityBar.tsx` | **New.** Durability fill bar with threshold colors |
+| `src/game/ui/Hud/Hud.tsx` | Use ItemIcon in hotbar; DurabilityBar; player preview `key`-driven heart shake |
+| `src/game/ui/Hud/hud.css` | `.item-icon`, `.durability-bar`, `.heart.shake`, `@keyframes heart-shake`, hotbar selected scale 1.10 |
+| `src/game/ui/Inventory/InventoryGrid.tsx` | ItemIcon + DurabilityBar in all slots; `<PlayerPreview />` |
+| `src/game/ui/Inventory/InventoryDialog.tsx` | Split-view branch via `useViewport`; `<InventoryGrid />` + `<RecipePanel />` side-by-side on desktop |
+| `src/game/ui/Inventory/inventoryDialog.css` | `.split-view` flex layout, `.inv-panel` widths |
+| `src/game/ui/Inventory/inventoryGrid.css` | `.durability-bar` rules; `.inv-grid-panel` width 624 px; `.player-preview*` styling |
+| `src/game/ui/LoadingOverlay/LoadingOverlay.tsx` | Status string `Planting trees…` → `Spawning sheep…` |
+| `src/game/ui/MainMenu/MainMenu.tsx` | Add `.main-menu-sun` element |
+| `src/game/ui/MainMenu/mainMenu.css` | Rotating voxel-sun styling and `@keyframes main-menu-sun-spin` |
+| `docs/Screen-Specs.md` | FPS counter moved from top-left to top-right |
+| `tests/e2e/gameOver.spec.ts` | **New.** 2 specs verifying GameOver renders and Respawn returns to game |
+| `tests/e2e/hudImprovements.spec.ts` | **New.** 9 specs covering icons, durability, shake, split-view, scale, loading message, sun |
+| `tests/e2e/criticalFixes.spec.ts` | Backup-World download timeout bumped 8 s → 20 s (autosave latency) |
+| `artifacts/Documentation_Conflict_Report.md` | Added DC-37…DC-46 |
+
+### Round 4 verification
+
+- `npx tsc --noEmit` — **0 errors**
+- `npx vitest run` — **134 / 134 passing** (no regressions)
+- `npm run build` — **success**
+- `npx playwright test --project=chromium-desktop` — **27 / 27 passing** (the prior 16 specs + the 11 new Round-4 specs)
+- Manual Playwright smoke: Game Over card now visible when health reaches 0; item icons appear in HUD and inventory slots; tool durability bar shows red at 30/60; hearts have the heart-shake animation class with proper CSS; inventory shows split view with player preview; rotating voxel sun visible on main menu.

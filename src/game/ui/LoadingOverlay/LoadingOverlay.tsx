@@ -12,16 +12,19 @@ export default function LoadingOverlay() {
   const setLoading = useGameStore((s) => s.setLoading);
   const [loaded, setLoaded] = useState(0);
   const [hint, setHint] = useState<string>('');
+  const [title, setTitle] = useState<string>('Building your world…');
   const startedAtRef = useRef<number>(Date.now());
   const targetRef = useRef<{ cx: number; cy: number; cz: number } | null>(null);
 
   useEffect(() => {
+    const isResume = useGameStore.getState().generated;
+    setTitle(isResume ? 'Loading Your World…' : 'Building your world…');
     startedAtRef.current = Date.now();
     const id = setInterval(() => {
       const cm = getActiveChunkManager();
       if (!cm) {
         setLoaded(0);
-        setHint('Booting world engine…');
+        setHint(isResume ? 'Loading your world…' : 'Booting world engine…');
         return;
       }
       if (!targetRef.current) {
@@ -46,10 +49,16 @@ export default function LoadingOverlay() {
         setTimeout(() => setScreen('game'), 60);
         return;
       }
-      if (!spawnReady) setHint('Sculpting hills…');
-      else if (l < 40) setHint('Planting trees…');
-      else if (l < 80) setHint('Hiding diamonds…');
-      else setHint('Populating animals…');
+      if (isResume) {
+        if (!spawnReady) setHint('Restoring chunks…');
+        else if (l < 80) setHint('Rebuilding meshes…');
+        else setHint('Almost there…');
+      } else {
+        if (!spawnReady) setHint('Sculpting hills…');
+        else if (l < 40) setHint('Spawning sheep…');
+        else if (l < 80) setHint('Hiding diamonds…');
+        else setHint('Populating animals…');
+      }
       const frac = Math.min(0.95, 0.1 + (l / 200) * 0.85);
       setLoading(frac, hint);
     }, 120);
@@ -66,7 +75,7 @@ export default function LoadingOverlay() {
     <div className="loading-overlay" role="status" aria-label="Generating world">
       <div className="loading-card">
         <div className="loading-spinner" aria-hidden />
-        <h2 className="loading-title">Building your world…</h2>
+        <h2 className="loading-title">{title}</h2>
         <div className="loading-bar-wrap">
           <div className="loading-bar" style={{ width: `${Math.round(progress * 100)}%` }} />
         </div>

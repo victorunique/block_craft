@@ -51,7 +51,7 @@ export const MONSTER_DETECT_RADIUS = 16;
 export const AUTOSAVE_INTERVAL_MS = 30_000;
 export const STORAGE_WARN_PERCENT = 80;
 
-export const STORAGE_VERSION = '1.0';
+export const STORAGE_VERSION = '1.1';
 
 export interface DifficultyConfig {
   monsterMultiplier: number;

@@ -109,7 +109,8 @@ describe('Save Manager (SM-001)', () => {
     expect(s.hunger).toBe(18);
     expect(s.timeOfDay).toBe(12345);
     expect(s.dayCount).toBe(4);
-    expect(s.screen).toBe('game');
+    expect(s.screen).toBe('loading');
+    expect(s.generated).toBe(true);
   });
 });
 
@@ -130,7 +131,7 @@ describe('Export / Import (.blockcraft)', () => {
     const blob = await exportWorldSave('exp');
     const text = await blob.text();
     const data = JSON.parse(text);
-    expect(data.version).toBe('1.0');
+    expect(data.version).toBe('1.1');
     expect(data.metadata.worldId).toBe('exp');
     expect(data.metadata.player.position).toEqual([1, 2, 3]);
   });

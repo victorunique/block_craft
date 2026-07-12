@@ -11,6 +11,7 @@ export default function MainMenu() {
   const [worldName, setWorldName] = useState<string>('');
   const [importError, setImportError] = useState<string>('');
   const [importSuccess, setImportSuccess] = useState<string>('');
+  const [importedWorldId, setImportedWorldId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const setScreen = useGameStore((s) => s.setScreen);
   const continueGame = useGameStore((s) => s.continueGame);
@@ -26,7 +27,29 @@ export default function MainMenu() {
 
   const onContinue = async () => {
     const ok = await continueGame();
-    if (!ok) setImportError('No save file found on this browser.');
+    if (!ok) {
+      setImportError('No save file found on this browser.');
+      return;
+    }
+    // After loadWorld has populated the store with playerPos/seed/size,
+    // construct the chunk manager + spawner and prime the spawn chunk.
+    try {
+      const { setActiveWorld } = await import('../../world/activeWorld');
+      const { createChunkManagerForWorld, createSpawner } = await import('../Hud/GameEngine');
+      const s = useGameStore.getState();
+      if (s.worldSeed) {
+        const cm = createChunkManagerForWorld(s.worldSeed, s.worldSize, 8, s.activeWorldId ?? undefined);
+        const sp = createSpawner(cm, s.worldSeed, s.worldSize);
+        setActiveWorld(cm, sp);
+        const pos = s.playerPos;
+        const { cx, cy, cz } = cm.worldToChunk(pos[0], pos[1], pos[2]);
+        void cm.ensureChunk(cx, cy, cz);
+        void cm.updateAroundPlayer(pos[0], pos[1], pos[2]);
+      }
+    } catch (err) {
+      // Continue without an active world if construction fails (e.g. no Worker support).
+      console.warn('Could not initialize active world on Continue', err);
+    }
   };
 
   const onNewGame = () => setScreen('world-creation');
@@ -34,6 +57,7 @@ export default function MainMenu() {
   const onImport = async () => {
     setImportError('');
     setImportSuccess('');
+    setImportedWorldId(null);
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.blockcraft,.json';
@@ -47,19 +71,9 @@ export default function MainMenu() {
         const worlds = await listWorlds();
         const w = worlds.find((x) => x.worldId === worldId);
         setImportSuccess(`World '${w?.name ?? 'Imported'}' imported successfully!`);
+        setImportedWorldId(worldId);
         setHasSave(true);
-        setWorldName(w?.name ?? '');
-        setTimeout(() => {
-          useGameStore.setState({
-            activeWorldId: worldId,
-            worldName: w?.name ?? '',
-            worldSeed: w?.seed ?? 0,
-            worldSize: (w?.size ?? 256) as any,
-            difficulty: (w?.difficulty ?? 'medium') as any,
-            playerPos: w?.playerPos ?? [0, 72, 0],
-            screen: 'game',
-          });
-        }, 800);
+        if (w) setWorldName(w.name);
       } catch (err: any) {
         setImportError("Oops! We couldn't read that backup file. Make sure it's a valid BlockCraft save.");
       }
@@ -67,9 +81,40 @@ export default function MainMenu() {
     input.click();
   };
 
+  const onPlayImportedNow = async () => {
+    if (!importedWorldId) return;
+    const { loadWorld } = await import('../../save/saveManager');
+    await loadWorld(importedWorldId);
+    // Construct active world from the imported metadata
+    try {
+      const { setActiveWorld } = await import('../../world/activeWorld');
+      const { createChunkManagerForWorld, createSpawner } = await import('../Hud/GameEngine');
+      const s = useGameStore.getState();
+      if (s.worldSeed) {
+        const cm = createChunkManagerForWorld(s.worldSeed, s.worldSize, 8, s.activeWorldId ?? undefined);
+        const sp = createSpawner(cm, s.worldSeed, s.worldSize);
+        setActiveWorld(cm, sp);
+        const pos = s.playerPos;
+        const { cx, cy, cz } = cm.worldToChunk(pos[0], pos[1], pos[2]);
+        void cm.ensureChunk(cx, cy, cz);
+        void cm.updateAroundPlayer(pos[0], pos[1], pos[2]);
+      }
+    } catch (err) {
+      console.warn('Could not initialize active world on Play Now', err);
+    }
+    setImportedWorldId(null);
+    setImportSuccess('');
+  };
+
+  const onDismissImported = () => {
+    setImportedWorldId(null);
+    setImportSuccess('');
+  };
+
   return (
     <div className="main-menu">
       <div className="main-menu-bg" />
+      <div className="main-menu-sun" aria-hidden />
       <div className="main-menu-logo">
         <span className="logo-icon" aria-hidden>🟩</span>
         <span className="logo-text">BlockCraft</span>
@@ -104,9 +149,15 @@ export default function MainMenu() {
           {importError}
         </div>
       )}
-      {importSuccess && (
-        <div className="toast success" role="status" aria-live="polite">
-          {importSuccess}
+      {importedWorldId && (
+        <div className="modal import-success-modal" role="dialog" aria-labelledby="import-success-title">
+          <div className="modal-card">
+            <h2 id="import-success-title">{importSuccess}</h2>
+            <div className="modal-actions">
+              <button className="btn-primary" onClick={onPlayImportedNow} autoFocus>Play Now!</button>
+              <button className="btn-secondary" onClick={onDismissImported}>Stay on Menu</button>
+            </div>
+          </div>
         </div>
       )}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}

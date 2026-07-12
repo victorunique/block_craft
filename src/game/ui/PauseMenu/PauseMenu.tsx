@@ -36,7 +36,7 @@ export default function PauseMenu() {
         <h1 className="pause-title">Game Paused</h1>
         <button className="pause-btn primary" onClick={togglePause}>Resume Game</button>
         <button className="pause-btn" onClick={() => setShowSettings(true)}>Settings</button>
-        <button className="pause-btn amber" onClick={onExport}>Backup World (.json)</button>
+        <button className="pause-btn amber" onClick={onExport}>Backup World (.blockcraft)</button>
         <button className="pause-btn danger" onClick={onQuit}>Quit to Title Menu</button>
         {toast && <div className="pause-toast">{toast}</div>}
       </div>

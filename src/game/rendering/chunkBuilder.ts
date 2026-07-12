@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CHUNK_SIZE, CHUNK_VOLUME } from '../../config/constants';
-import { BlockId, isAir, isTransparent, isLiquid } from '../../config/blocks';
+import { BlockId, ATLAS_TILE, isAir, isTransparent, isLiquid } from '../../config/blocks';
 import { blockAllFacesUV, blockFaceUV, tileUV, ATLAS_MAP, type AtlasFaceSlot } from './textureAtlas';
 
 export interface ChunkMeshBuffers {
@@ -126,7 +126,7 @@ export function buildChunkMeshGreedy(voxels: Uint8Array, chunkX: number, chunkY:
 
 export function buildWaterChunkMesh(voxels: Uint8Array, chunkX: number, chunkY: number, chunkZ: number, worldSize = 512): ChunkMeshBuffers {
   const state: BuilderState = { positions: [], normals: [], uvs: [], indices: [] };
-  const waterUV = tileUV(0, 3);
+  const waterUV = tileUV(ATLAS_TILE.WATER[0], ATLAS_TILE.WATER[1]);
   const half = worldSize / 2;
   for (let y = 0; y < CHUNK_SIZE; y++) {
     for (let z = 0; z < CHUNK_SIZE; z++) {

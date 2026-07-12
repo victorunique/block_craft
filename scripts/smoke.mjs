@@ -3,7 +3,7 @@ import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { PNG } from 'pngjs';
 
-const PORT = '4176';
+const PORT = '4173';
 const BASE = `http://localhost:${PORT}`;
 const outDir = path.resolve(process.cwd(), 'artifacts/screenshots');
 mkdirSync(outDir, { recursive: true });

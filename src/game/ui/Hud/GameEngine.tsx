@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { PointerLockControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from '../../store/gameStore';
+import { useInputStore } from '../../store/inputStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { ChunkManager, type ChunkEntry } from '../../world/chunkManager';
 import { getChunkWorker } from '../../rendering/chunkWorkerClient';
@@ -12,7 +13,7 @@ import { updateEntityPosition } from '../../physics/collision';
 import { raycastFromCamera, placeTargetFromHit } from '../../physics/raycast';
 import { createTerrainGenerator } from '../../terrain/terrainGenerator';
 import { audio } from '../../audio/audioManager';
-import { DAY_LENGTH_TICKS, TICKS_PER_SECOND, INTERACTION_REACH } from '../../../config/constants';
+import { DAY_LENGTH_TICKS, TICKS_PER_SECOND, INTERACTION_REACH, PLAYER_EYE_HEIGHT, PLAYER_WIDTH, PLAYER_HEIGHT, WALK_SPEED, SNEAK_SPEED, FALL_DAMAGE_THRESHOLD, BLOCK_DROPS } from '../../../config/constants';
 import { BlockId, isAir, isLiquid } from '../../../config/blocks';
 import { EntitySpawner } from '../../entities/spawner';
 import { getSkyColor, getSunAngle, getSunIntensity } from '../../world/timeSystem';
@@ -52,11 +53,11 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
   useEffect(() => {
     const dist = Math.hypot(
       camera.position.x - playerPos[0],
-      (camera.position.y - 1.62) - playerPos[1],
+      (camera.position.y - PLAYER_EYE_HEIGHT) - playerPos[1],
       camera.position.z - playerPos[2]
     );
     if (!initializedRef.current || dist > 2.0) {
-      camera.position.set(playerPos[0], playerPos[1] + 1.62, playerPos[2]);
+      camera.position.set(playerPos[0], playerPos[1] + PLAYER_EYE_HEIGHT, playerPos[2]);
       camera.rotation.order = 'YXZ';
       camera.rotation.y = yawRef.current;
       camera.rotation.x = pitchRef.current;
@@ -76,6 +77,27 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
   }, [chunkManager]);
 
   useEffect(() => {
+    const isTesting = typeof navigator !== 'undefined' && navigator.webdriver;
+    if (isTesting) return;
+    if (screen !== 'game' || isPaused) return;
+    const canvas = gl.domElement;
+    const tryLock = () => {
+      if (document.pointerLockElement !== canvas) {
+        const req = canvas.requestPointerLock();
+        if (req && typeof (req as Promise<void>).catch === 'function') {
+          (req as Promise<void>).catch(() => { /* user-gesture may not be available */ });
+        }
+      }
+    };
+    const timer = setTimeout(tryLock, 60);
+    canvas.addEventListener('click', tryLock);
+    return () => {
+      clearTimeout(timer);
+      canvas.removeEventListener('click', tryLock);
+    };
+  }, [gl, screen, isPaused]);
+
+  useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       keysRef.current[e.code] = true;
       if (e.code === 'Digit1') setActiveSlot(0);
@@ -87,6 +109,20 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
       if (e.code === 'Digit7') setActiveSlot(6);
       if (e.code === 'Digit8') setActiveSlot(7);
       if (e.code === 'Digit9') setActiveSlot(8);
+      if (e.code === 'Escape') {
+        const s = useGameStore.getState();
+        if (s.screen === 'game' || s.screen === 'paused') {
+          s.togglePause();
+          e.preventDefault();
+        }
+      }
+      if (e.code === 'KeyE') {
+        const s = useGameStore.getState();
+        if (s.screen === 'game' || s.screen === 'paused') {
+          s.toggleInventory();
+          e.preventDefault();
+        }
+      }
     };
     const onKeyUp = (e: KeyboardEvent) => { keysRef.current[e.code] = false; };
     const onMouseMove = (e: MouseEvent) => {
@@ -129,7 +165,7 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
 
     const cm = chunkManagerRef.current;
     const camFeetX = camera.position.x;
-    const camFeetY = camera.position.y - 1.62;
+    const camFeetY = camera.position.y - PLAYER_EYE_HEIGHT;
     const camFeetZ = camera.position.z;
     const { cx, cy, cz } = cm.worldToChunk(camFeetX, camFeetY, camFeetZ);
     const spawnChunk = cm.getChunk(cx, cy, cz);
@@ -138,6 +174,10 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
     }
 
     const sens = settings.mouseSensitivity;
+    const inputStore = useInputStore.getState();
+    const lookDelta = inputStore.consumeLook();
+    mouseRef.current.dx += lookDelta.dx;
+    mouseRef.current.dy += lookDelta.dy;
     yawRef.current -= (mouseRef.current.dx * sens) * 0.002;
     pitchRef.current -= (mouseRef.current.dy * sens) * 0.002;
     pitchRef.current = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, pitchRef.current));
@@ -147,11 +187,16 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
     camera.rotation.y = yawRef.current;
     camera.rotation.x = pitchRef.current;
 
-    const fwd = (keysRef.current['KeyW'] ? 1 : 0) - (keysRef.current['KeyS'] ? 1 : 0);
-    const strafe = (keysRef.current['KeyD'] ? 1 : 0) - (keysRef.current['KeyA'] ? 1 : 0);
-    const jump = keysRef.current['Space'];
+    const kbFwd = (keysRef.current['KeyW'] ? 1 : 0) - (keysRef.current['KeyS'] ? 1 : 0);
+    const kbStrafe = (keysRef.current['KeyD'] ? 1 : 0) - (keysRef.current['KeyA'] ? 1 : 0);
+    const mobMove = inputStore.move;
+    const fwd = kbFwd !== 0 ? kbFwd : -mobMove.y;
+    const strafe = kbStrafe !== 0 ? kbStrafe : mobMove.x;
+    const jumpKey = keysRef.current['Space'];
+    const jumpQueued = inputStore.consumeJump();
+    const jump = jumpKey || jumpQueued;
     const sneak = keysRef.current['ShiftLeft'] || keysRef.current['ShiftRight'];
-    const speed = sneak ? 1.3 : 4.3;
+    const speed = sneak ? SNEAK_SPEED : WALK_SPEED;
 
     const sinY = Math.sin(yawRef.current);
     const cosY = Math.cos(yawRef.current);
@@ -160,17 +205,20 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
     velRef.current[0] = moveX;
     velRef.current[2] = moveZ;
 
+    if (inputStore.consumeMine()) onLeftClick();
+    if (inputStore.consumePlace()) onRightClick();
+
     const result = updateEntityPosition(
-      [camera.position.x, camera.position.y - 1.62, camera.position.z],
+      [camera.position.x, camera.position.y - PLAYER_EYE_HEIGHT, camera.position.z],
       velRef.current,
-      [0.6, 1.8],
+      [PLAYER_WIDTH, PLAYER_HEIGHT],
       cappedDt,
       (x, y, z) => chunkManager.getBlockAt(x, y, z),
       { jumpRequested: jump && !lastJumpRef.current },
     );
     lastJumpRef.current = jump;
     onGroundRef.current = result.isOnGround;
-    camera.position.set(result.newPos[0], result.newPos[1] + 1.62, result.newPos[2]);
+    camera.position.set(result.newPos[0], result.newPos[1] + PLAYER_EYE_HEIGHT, result.newPos[2]);
     velRef.current[0] = result.newVel[0];
     velRef.current[1] = result.newVel[1];
     velRef.current[2] = result.newVel[2];
@@ -188,19 +236,37 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
       );
     }
 
-    if (result.newPos[1] < -10) {
+    if (result.newPos[1] < -FALL_DAMAGE_THRESHOLD * 4) {
       const s = useGameStore.getState();
       const half = chunkManager.worldSize / 2;
       const safeX = Math.max(-half + 5, Math.min(half - 5, result.newPos[0]));
       const safeZ = Math.max(-half + 5, Math.min(half - 5, result.newPos[2]));
       const surface = getHeight(Math.floor(safeX), Math.floor(safeZ));
       useGameStore.setState({ playerPos: [safeX, surface + 4, safeZ] });
-      camera.position.set(safeX, surface + 4 + 1.62, safeZ);
+      camera.position.set(safeX, surface + 4 + PLAYER_EYE_HEIGHT, safeZ);
       velRef.current[1] = 0;
       s.damagePlayer(2, 'void');
     }
 
     tickHunger(cappedDt, useGameStore.getState().difficulty);
+
+    const headX = Math.floor(camera.position.x);
+    const headY = Math.floor(camera.position.y + 0.2);
+    const headZ = Math.floor(camera.position.z);
+    const headBlock = chunkManager.getBlockAt(headX, headY, headZ);
+    const headUnderwater = headBlock === BlockId.WATER;
+    useGameStore.getState().tickOxygen(cappedDt, headUnderwater);
+
+    const feetY = Math.floor(camera.position.y - PLAYER_EYE_HEIGHT + 0.1);
+    let touchingCactus = false;
+    for (const [dx, dz] of [[-0.3, 0], [0.3, 0], [0, -0.3], [0, 0.3]] as const) {
+      const x = Math.floor(camera.position.x + dx);
+      const z = Math.floor(camera.position.z + dz);
+      if (chunkManager.getBlockAt(x, feetY, z) === BlockId.CACTUS) { touchingCactus = true; break; }
+      if (chunkManager.getBlockAt(x, feetY + 1, z) === BlockId.CACTUS) { touchingCactus = true; break; }
+    }
+    if (touchingCactus) damagePlayer(cappedDt, 'cactus');
+
     void mouseRef;
     void onGroundRef;
     void viewport;
@@ -234,8 +300,12 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
   function onRightClick() {
     const hit = getTargetBlock();
     if (!hit) return;
-    const target = placeTargetFromHit(hit);
     const s = useGameStore.getState();
+    if (hit.block === BlockId.FURNACE) {
+      s.openSmelting(true);
+      return;
+    }
+    const target = placeTargetFromHit(hit);
     const item = s.hotbar[s.activeSlot];
     if (!item) return;
     const blockAtTarget = chunkManager.getBlockAt(target[0], target[1], target[2]);
@@ -252,17 +322,7 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
 }
 
 function dropForBlock(block: number): number {
-  const drops: Record<number, number> = {
-    [BlockId.STONE]: BlockId.COBBLESTONE,
-    [BlockId.COAL_ORE]: BlockId.COAL_ITEM,
-    [BlockId.IRON_ORE]: BlockId.IRON_INGOT,
-    [BlockId.GOLD_ORE]: BlockId.GOLD_INGOT,
-    [BlockId.DIAMOND_ORE]: BlockId.DIAMOND,
-    [BlockId.GRASS]: BlockId.DIRT,
-    [BlockId.WOOD]: BlockId.PLANKS,
-    [BlockId.PINE_WOOD]: BlockId.PLANKS,
-  };
-  return drops[block] ?? 0;
+  return BLOCK_DROPS[block] ?? 0;
 }
 
 function WorldChunks({ chunkManager }: { chunkManager: ChunkManager }) {
@@ -304,6 +364,39 @@ function WorldChunks({ chunkManager }: { chunkManager: ChunkManager }) {
         <ChunkMesh key={`${entry.cx},${entry.cy},${entry.cz}`} entry={entry} />
       ))}
     </>
+  );
+}
+
+function BlockHighlight({ chunkManager }: { chunkManager: ChunkManager }) {
+  const { camera } = useThree();
+  const isPaused = useGameStore((s) => s.isPaused);
+  const screen = useGameStore((s) => s.screen);
+  const ref = useRef<THREE.LineSegments>(null);
+
+  useFrame(() => {
+    if (!ref.current) return;
+    if (isPaused || screen !== 'game') {
+      ref.current.visible = false;
+      return;
+    }
+    const hit = raycastFromCamera(camera, (x, y, z) => chunkManager.getBlockAt(x, y, z), INTERACTION_REACH);
+    if (!hit) {
+      ref.current.visible = false;
+      return;
+    }
+    ref.current.visible = true;
+    ref.current.position.set(hit.position[0] + 0.5, hit.position[1] + 0.5, hit.position[2] + 0.5);
+  });
+
+  const edges = useMemo(() => {
+    const g = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.005, 1.005, 1.005));
+    return g;
+  }, []);
+
+  return (
+    <lineSegments ref={ref} geometry={edges} renderOrder={2}>
+      <lineBasicMaterial color="#000000" transparent opacity={0.8} depthTest={true} />
+    </lineSegments>
   );
 }
 
@@ -380,9 +473,11 @@ export default function GameEngine({ chunkManager, spawner }: Props) {
   }, [settings.renderDistance]);
   void buildTextureAtlas;
   const getHeight = (x: number, z: number) => getSurfaceHeight(chunkManager, x, z);
-  const getBiome = (x: number, z: number) => {
-    return 'plains';
-  };
+  const terrainGen = useMemo(
+    () => createTerrainGenerator(worldSeed, worldSize),
+    [worldSeed, worldSize],
+  );
+  const getBiome = (x: number, z: number) => terrainGen.getBiomeAt(x, z);
   return (
     <Canvas
       camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 72, 0] }}
@@ -391,6 +486,7 @@ export default function GameEngine({ chunkManager, spawner }: Props) {
     >
       <SunAndSky />
       <WorldChunks chunkManager={chunkManager} />
+      <BlockHighlight chunkManager={chunkManager} />
       <Player chunkManager={chunkManager} getHeight={getHeight} getBiome={getBiome} />
       <ChunkUpdater chunkManager={chunkManager} />
       <EntityRunner spawner={spawner} />
@@ -416,18 +512,19 @@ export function getSurfaceHeight(chunkManager: ChunkManager, x: number, z: numbe
 }
 
 export function createSpawner(chunkManager: ChunkManager, seed: number, worldSize: number) {
+  const terrainGen = createTerrainGenerator(seed, worldSize);
   return new EntitySpawner({
     seed,
     difficulty: useGameStore.getState().difficulty,
     getHeight: (x, z) => getSurfaceHeight(chunkManager, x, z),
-    getBiome: () => 'plains',
+    getBiome: (x, z) => terrainGen.getBiomeAt(x, z),
     isLit: (x, y, z) => {
       let lit = 0;
       for (let dy = -1; dy <= 1; dy++) {
         for (let dz = -1; dz <= 1; dz++) {
           for (let dx = -1; dx <= 1; dx++) {
             const b = chunkManager.getBlockAt(x + dx, y + dy, z + dz);
-            if (b === 15) lit += 1;
+            if (b === BlockId.TORCH) lit += 1;
           }
         }
       }

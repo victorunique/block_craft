@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BlockId, isTransparent, isLiquid } from '../../config/blocks';
+import { BlockId, ATLAS_TILE, isTransparent, isLiquid } from '../../config/blocks';
 
 export const ATLAS_COLS = 16;
 export const ATLAS_ROWS = 16;
@@ -24,38 +24,38 @@ interface BlockFaceUV {
   bottom?: [number, number];
 }
 
-export const FACE_TOP: [number, number] = [0, 0];
-export const FACE_SIDE: [number, number] = [1, 0];
-export const FACE_BOTTOM: [number, number] = [2, 0];
+export const FACE_TOP: [number, number] = ATLAS_TILE.STONE;
+export const FACE_SIDE: [number, number] = ATLAS_TILE.STONE;
+export const FACE_BOTTOM: [number, number] = ATLAS_TILE.STONE;
 
 export const ATLAS_MAP: Record<number, BlockFaceUV | { pattern: 'cross' | 'plant' | 'torch' | 'liquid-top' }> = {
-  [BlockId.GRASS]: { top: [3, 0], side: [0, 1], bottom: [2, 0] },
-  [BlockId.DIRT]: { top: [2, 0], side: [2, 0], bottom: [2, 0] },
-  [BlockId.STONE]: { top: [1, 0], side: [1, 0], bottom: [1, 0] },
-  [BlockId.COBBLESTONE]: { top: [4, 0], side: [4, 0], bottom: [4, 0] },
-  [BlockId.WOOD]: { top: [5, 0], side: [6, 0], bottom: [5, 0] },
-  [BlockId.PINE_WOOD]: { top: [7, 0], side: [8, 0], bottom: [7, 0] },
-  [BlockId.PLANKS]: { top: [9, 0], side: [9, 0], bottom: [9, 0] },
-  [BlockId.SAND]: { top: [10, 0], side: [10, 0], bottom: [10, 0] },
-  [BlockId.SANDSTONE]: { top: [11, 0], side: [11, 0], bottom: [11, 0] },
-  [BlockId.SNOW_LAYER]: { top: [12, 0], side: [12, 0], bottom: [12, 0] },
-  [BlockId.ICE]: { top: [13, 0], side: [13, 0], bottom: [13, 0] },
+  [BlockId.GRASS]: { top: ATLAS_TILE.GRASS_TOP, side: ATLAS_TILE.GRASS_SIDE, bottom: ATLAS_TILE.DIRT },
+  [BlockId.DIRT]: { top: ATLAS_TILE.DIRT, side: ATLAS_TILE.DIRT, bottom: ATLAS_TILE.DIRT },
+  [BlockId.STONE]: { top: ATLAS_TILE.STONE, side: ATLAS_TILE.STONE, bottom: ATLAS_TILE.STONE },
+  [BlockId.COBBLESTONE]: { top: ATLAS_TILE.COBBLESTONE, side: ATLAS_TILE.COBBLESTONE, bottom: ATLAS_TILE.COBBLESTONE },
+  [BlockId.WOOD]: { top: ATLAS_TILE.WOOD_TOP, side: ATLAS_TILE.WOOD_SIDE, bottom: ATLAS_TILE.WOOD_TOP },
+  [BlockId.PINE_WOOD]: { top: ATLAS_TILE.PINE_WOOD_TOP, side: ATLAS_TILE.PINE_WOOD_SIDE, bottom: ATLAS_TILE.PINE_WOOD_TOP },
+  [BlockId.PLANKS]: { top: ATLAS_TILE.PLANKS, side: ATLAS_TILE.PLANKS, bottom: ATLAS_TILE.PLANKS },
+  [BlockId.SAND]: { top: ATLAS_TILE.SAND, side: ATLAS_TILE.SAND, bottom: ATLAS_TILE.SAND },
+  [BlockId.SANDSTONE]: { top: ATLAS_TILE.SANDSTONE, side: ATLAS_TILE.SANDSTONE, bottom: ATLAS_TILE.SANDSTONE },
+  [BlockId.SNOW_LAYER]: { top: ATLAS_TILE.SNOW_LAYER, side: ATLAS_TILE.SNOW_LAYER, bottom: ATLAS_TILE.SNOW_LAYER },
+  [BlockId.ICE]: { top: ATLAS_TILE.ICE, side: ATLAS_TILE.ICE, bottom: ATLAS_TILE.ICE },
   [BlockId.WATER]: { pattern: 'liquid-top' },
-  [BlockId.GLASS]: { top: [14, 0], side: [14, 0], bottom: [14, 0] },
-  [BlockId.BRICK]: { top: [15, 0], side: [15, 0], bottom: [15, 0] },
-  [BlockId.LEAVES]: { top: [0, 2], side: [0, 2], bottom: [0, 2] },
-  [BlockId.PINE_LEAVES]: { top: [1, 2], side: [1, 2], bottom: [1, 2] },
-  [BlockId.COAL_ORE]: { top: [2, 2], side: [2, 2], bottom: [2, 2] },
-  [BlockId.IRON_ORE]: { top: [3, 2], side: [3, 2], bottom: [3, 2] },
-  [BlockId.GOLD_ORE]: { top: [4, 2], side: [4, 2], bottom: [4, 2] },
-  [BlockId.DIAMOND_ORE]: { top: [5, 2], side: [5, 2], bottom: [5, 2] },
-  [BlockId.BEDROCK]: { top: [6, 2], side: [6, 2], bottom: [6, 2] },
-  [BlockId.CLAY]: { top: [7, 2], side: [7, 2], bottom: [7, 2] },
-  [BlockId.FURNACE]: { top: [8, 2], side: [9, 2], bottom: [10, 2] },
+  [BlockId.GLASS]: { top: ATLAS_TILE.GLASS, side: ATLAS_TILE.GLASS, bottom: ATLAS_TILE.GLASS },
+  [BlockId.BRICK]: { top: ATLAS_TILE.BRICK, side: ATLAS_TILE.BRICK, bottom: ATLAS_TILE.BRICK },
+  [BlockId.LEAVES]: { top: ATLAS_TILE.LEAVES, side: ATLAS_TILE.LEAVES, bottom: ATLAS_TILE.LEAVES },
+  [BlockId.PINE_LEAVES]: { top: ATLAS_TILE.PINE_LEAVES, side: ATLAS_TILE.PINE_LEAVES, bottom: ATLAS_TILE.PINE_LEAVES },
+  [BlockId.COAL_ORE]: { top: ATLAS_TILE.COAL_ORE, side: ATLAS_TILE.COAL_ORE, bottom: ATLAS_TILE.COAL_ORE },
+  [BlockId.IRON_ORE]: { top: ATLAS_TILE.IRON_ORE, side: ATLAS_TILE.IRON_ORE, bottom: ATLAS_TILE.IRON_ORE },
+  [BlockId.GOLD_ORE]: { top: ATLAS_TILE.GOLD_ORE, side: ATLAS_TILE.GOLD_ORE, bottom: ATLAS_TILE.GOLD_ORE },
+  [BlockId.DIAMOND_ORE]: { top: ATLAS_TILE.DIAMOND_ORE, side: ATLAS_TILE.DIAMOND_ORE, bottom: ATLAS_TILE.DIAMOND_ORE },
+  [BlockId.BEDROCK]: { top: ATLAS_TILE.BEDROCK, side: ATLAS_TILE.BEDROCK, bottom: ATLAS_TILE.BEDROCK },
+  [BlockId.CLAY]: { top: ATLAS_TILE.CLAY, side: ATLAS_TILE.CLAY, bottom: ATLAS_TILE.CLAY },
+  [BlockId.FURNACE]: { top: ATLAS_TILE.FURNACE_TOP, side: ATLAS_TILE.FURNACE_SIDE, bottom: ATLAS_TILE.FURNACE_BOTTOM },
   [BlockId.TORCH]: { pattern: 'torch' },
   [BlockId.FLOWER_RED]: { pattern: 'plant' },
   [BlockId.FLOWER_YELLOW]: { pattern: 'plant' },
-  [BlockId.CACTUS]: { top: [11, 2], side: [12, 2], bottom: [13, 2] },
+  [BlockId.CACTUS]: { top: ATLAS_TILE.CACTUS_TOP, side: ATLAS_TILE.CACTUS_SIDE, bottom: ATLAS_TILE.CACTUS_BOTTOM },
 };
 
 export const TOOL_ICONS: Record<number, [number, number]> = {
@@ -295,7 +295,7 @@ export function buildTextureAtlas(): { canvas: HTMLCanvasElement; texture: THREE
   drawTile(ctx, 8, 1, BlockId.ICE);
   drawTile(ctx, 9, 1, BlockId.SNOW_LAYER);
   drawTile(ctx, 10, 1, BlockId.BRICK);
-  drawTile(ctx, 11, 1, BlockId.CACTUS);
+  drawWaterTile(ctx, ATLAS_TILE.WATER[0], ATLAS_TILE.WATER[1]);
   drawTile(ctx, 12, 1, BlockId.FURNACE);
   drawTile(ctx, 13, 1, BlockId.FURNACE);
   drawTile(ctx, 14, 1, BlockId.FURNACE);
@@ -317,8 +317,6 @@ export function buildTextureAtlas(): { canvas: HTMLCanvasElement; texture: THREE
   drawTile(ctx, 13, 2, BlockId.CACTUS);
   drawPlant(ctx, 14, 2, [220, 70, 70]);
   drawPlant(ctx, 15, 2, [240, 220, 60]);
-
-  drawWaterTile(ctx, 0, 3);
 
   drawStackIcon(ctx, 0, 3, [50, 50, 50]);
   drawStackIcon(ctx, 1, 3, [220, 220, 230]);
