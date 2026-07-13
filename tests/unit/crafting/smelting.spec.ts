@@ -55,5 +55,19 @@ describe('Smelting (ZS-002)', () => {
   it('findSmeltingRecipe returns glass for sand', () => {
     expect(findSmeltingRecipe(BlockId.SAND)?.id).toBe('glass');
     expect(findSmeltingRecipe(BlockId.CLAY)?.id).toBe('brick');
+    expect(findSmeltingRecipe(BlockId.BEEF)?.id).toBe('steak');
+    expect(findSmeltingRecipe(BlockId.PORK)?.id).toBe('cooked_porkchop');
+    expect(findSmeltingRecipe(BlockId.CHICKEN)?.id).toBe('cooked_chicken');
+  });
+
+  it('smelts raw beef into steak', () => {
+    let g = emptyInventory();
+    g.storage[0] = createItem(BlockId.BEEF, 1);
+    g.storage[1] = createItem(BlockId.COAL_ITEM, 1);
+    const r = smelt(g, 'steak', true);
+    expect(r.result.success).toBe(true);
+    expect(r.result.outputBlockId).toBe(BlockId.COOKED_BEEF);
+    const steakCount = [r.grid.hotbar, r.grid.storage].flat().filter((it) => it?.blockId === BlockId.COOKED_BEEF).reduce((a, it) => a + (it?.count ?? 0), 0);
+    expect(steakCount).toBe(1);
   });
 });

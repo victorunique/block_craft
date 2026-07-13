@@ -1,9 +1,10 @@
 import { useGameStore } from '../../store/gameStore';
-import { listWorlds, importWorldSave } from '../../save/saveManager';
+import { listWorlds, importWorldSave as importSaveFn, loadWorld } from '../../save/saveManager';
 import { useEffect, useState } from 'react';
-import { importWorldSave as importSaveFn } from '../../save/saveManager';
 import { useSettingsStore } from '../../store/settingsStore';
 import SettingsModal from '../PauseMenu/SettingsModal';
+import { setActiveWorld } from '../../world/activeWorld';
+import { createChunkManagerForWorld, createSpawner } from '../Hud/GameEngine';
 import './mainMenu.css';
 
 export default function MainMenu() {
@@ -34,8 +35,6 @@ export default function MainMenu() {
     // After loadWorld has populated the store with playerPos/seed/size,
     // construct the chunk manager + spawner and prime the spawn chunk.
     try {
-      const { setActiveWorld } = await import('../../world/activeWorld');
-      const { createChunkManagerForWorld, createSpawner } = await import('../Hud/GameEngine');
       const s = useGameStore.getState();
       if (s.worldSeed) {
         const cm = createChunkManagerForWorld(s.worldSeed, s.worldSize, 8, s.activeWorldId ?? undefined);
@@ -83,12 +82,9 @@ export default function MainMenu() {
 
   const onPlayImportedNow = async () => {
     if (!importedWorldId) return;
-    const { loadWorld } = await import('../../save/saveManager');
     await loadWorld(importedWorldId);
     // Construct active world from the imported metadata
     try {
-      const { setActiveWorld } = await import('../../world/activeWorld');
-      const { createChunkManagerForWorld, createSpawner } = await import('../Hud/GameEngine');
       const s = useGameStore.getState();
       if (s.worldSeed) {
         const cm = createChunkManagerForWorld(s.worldSeed, s.worldSize, 8, s.activeWorldId ?? undefined);

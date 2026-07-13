@@ -63,7 +63,7 @@ Date: 2026-07-11
   - Block items stack up to 64; tool items (Axes, Pickaxes, Swords) are non-stackable and carry durability ratings.
   - Drag-and-drop interactions swap items between grids, and Shift+Click splits item stacks.
   - Crafting panel lists recipes, showing red/green status badges for required ingredients.
-  - Smelting requires a placed Furnace block, fuel (Coal), and material (Sand for Glass; Clay for Brick).
+  - Smelting requires a placed Furnace block, fuel (Coal), and material (Sand for Glass; Clay for Brick; Raw Beef/Pork/Chicken for Steak/Cooked Porkchop/Cooked Chicken).
 * **Definition of Done (DoD):**
   - Crafting consumes materials and yields output in the exact quantities specified in JSON recipe configs.
   - Smelting transactions fail and preserve materials if outputs cannot fit in inventory (partial transaction rollback).
@@ -97,3 +97,20 @@ Date: 2026-07-11
   - Application becomes interactive in less than 5 seconds.
   - Heap memory usage remains strictly below 500 MB.
   - Target rendering framerate remains stable at 60 FPS (desktop) and 30+ FPS (mobile).
+
+---
+
+## 7. 3D Entities, AI, and First-Person Visual feedback
+
+### Feature Name: 3D Blocky Models, AI simulation, and Swing Animation
+* **Acceptance Conditions:**
+  - Peaceful animals (Cow, Pig, Chicken) and Aggressive monsters (Zombie, Skeleton, Spider) render in 3D using simple blocky structures inside the Canvas.
+  - Entities obey physics laws (gravity, terrain collisions) via AABB collision checking on every frame tick.
+  - Zombie chases player and inflicts melee damage; Skeleton spawns 3D arrow projectiles traveling toward the player; Spider moves faster and climbs blocks.
+  - Peaceful animals wander randomly and flee for 3 seconds when attacked by the player.
+  - Left-clicking triggers a first-person held tool or arm swinging animation (rotation and translation arc in the camera viewport).
+  - Left-clicking checks for hits on entities inside reach distance, damaging them and applying knockback.
+* **Definition of Done (DoD):**
+  - Defeated animals drop raw resources (Beef, Pork, Chicken, Leather, Feathers) directly into the player's inventory.
+  - Weapon swinging animation switches sides according to the user's handedness settings.
+  - Projectiles (Skeleton arrows) collide with terrain blocks or the player, applying damage to the player upon impact.

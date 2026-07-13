@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RECIPES } from '@/game/crafting/recipes';
+import { RECIPES, SMELTING_RECIPES } from '@/game/crafting/recipes';
 import { BlockId } from '@/config/blocks';
 
 describe('Crafting recipes (PRD §11.4)', () => {
@@ -35,5 +35,22 @@ describe('Crafting recipes (PRD §11.4)', () => {
     expect(RECIPES.find((r) => r.id === 'wooden_sword')).toBeTruthy();
     expect(RECIPES.find((r) => r.id === 'stone_sword')).toBeTruthy();
     expect(RECIPES.find((r) => r.id === 'iron_sword')).toBeTruthy();
+  });
+
+  it('all food smelting recipes exist', () => {
+    const steak = SMELTING_RECIPES.find((r) => r.id === 'steak')!;
+    expect(steak).toBeTruthy();
+    expect(steak.input.blockId).toBe(BlockId.BEEF);
+    expect(steak.output.blockId).toBe(BlockId.COOKED_BEEF);
+
+    const pork = SMELTING_RECIPES.find((r) => r.id === 'cooked_porkchop')!;
+    expect(pork).toBeTruthy();
+    expect(pork.input.blockId).toBe(BlockId.PORK);
+    expect(pork.output.blockId).toBe(BlockId.COOKED_PORK);
+
+    const chicken = SMELTING_RECIPES.find((r) => r.id === 'cooked_chicken')!;
+    expect(chicken).toBeTruthy();
+    expect(chicken.input.blockId).toBe(BlockId.CHICKEN);
+    expect(chicken.output.blockId).toBe(BlockId.COOKED_CHICKEN);
   });
 });

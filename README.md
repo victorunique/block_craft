@@ -8,6 +8,7 @@ A browser-native 3D voxel sandbox game. Pure frontend, no backend, no accounts.
 npm install
 npm run dev         # local dev server
 npm test            # unit + integration tests (Vitest)
+npm run test:e2e    # E2E tests (Playwright)
 npm run build       # production bundle (dist/)
 npm run preview     # preview the production build
 npm run typecheck   # TypeScript type-check

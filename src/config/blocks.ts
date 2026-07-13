@@ -96,6 +96,9 @@ export const BlockId = {
   LEATHER: 154,
   FEATHER: 155,
   APPLE: 156,
+  COOKED_BEEF: 157,
+  COOKED_PORK: 158,
+  COOKED_CHICKEN: 159,
 } as const;
 
 export type BlockIdValue = (typeof BlockId)[keyof typeof BlockId];
@@ -150,6 +153,9 @@ export const BLOCK_NAMES: Record<number, string> = {
   [BlockId.LEATHER]: 'Leather',
   [BlockId.FEATHER]: 'Feather',
   [BlockId.APPLE]: 'Apple',
+  [BlockId.COOKED_BEEF]: 'Steak',
+  [BlockId.COOKED_PORK]: 'Cooked Porkchop',
+  [BlockId.COOKED_CHICKEN]: 'Cooked Chicken',
 };
 
 export const SOLID_BLOCKS = new Set<number>([

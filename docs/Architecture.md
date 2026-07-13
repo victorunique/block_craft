@@ -156,13 +156,18 @@ src/
 ---
 
 ### 3.7. Entity & AI Subsystem (`src/game/entities/`, `src/game/animals/`, `src/game/monsters/`)
-* **Role:** Control spawning, movement, and pathfinding AI for peaceful animals and aggressive night monsters.
+* **Role:** Control spawning, movement, rendering, and pathfinding AI for peaceful animals and aggressive night monsters.
 * **Base Entity System:** All entities (player, animals, monsters) inherit properties from a base `Entity` class (handling health, physics AABB updates, position, velocity, and hitboxes).
-* **Peaceful Animals (Cows, Pigs, Chickens):** Spawn in daylight on grass blocks. Randomly wander. Run away for $3$ seconds when hit. Drop food items on death.
+* **Peaceful Animals (Cows, Pigs, Chickens):** Spawn in daylight on grass blocks. Randomly wander. Run away for $3$ seconds when hit. Drop raw meat/leather/feathers directly into player inventory on death.
 * **Aggressive Monsters (Zombies, Skeletons, Spiders):** Spawn when light levels drop below 4 (during night or inside deep caves). Chases player directly when player enters a $16$-block detection radius.
   * **Zombie:** Melee damage.
-  * **Skeleton:** Ranged arrows (spawns arrow entities targeting player coordinates).
+  * **Skeleton:** Ranged arrows (spawns 3D arrow meshes with linear physics, traveling towards the player and dealing damage on collision).
   * **Spider:** Fast, climbs solid blocks.
+* **3D Rendering & Animations:**
+  * Multi-box R3F visual components represent each species (brown boxy cows, pink pigs, white chickens, green zombies, light gray skeletons, black spiders).
+  * Mesh rotations are interpolated based on velocity and direction.
+  * Player's held tool (axe, pickaxe, sword, block, or bare hand) renders in the camera viewport and undergoes a rotational swing animation when left-clicked.
+* **AABB Physics Simulation:** Runs physics ticks for all entities on the main thread inside the R3F frame loop to enforce gravity, vertical velocity, and solid block collision boundaries.
 * **Cap Limits:** Restricts entities dynamically to 20 peaceful animals and 30 aggressive monsters to avoid CPU bottlenecks in single-threaded environments.
 
 ---

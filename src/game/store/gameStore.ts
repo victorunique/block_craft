@@ -25,6 +25,7 @@ import {
 } from '../inventory/slots';
 import { RECIPES } from '../crafting/recipes';
 import { smelt as runSmelt } from '../crafting/smelting';
+import { loadWorld } from '../save/saveManager';
 
 const defaultSettings: GameSettings = {
   graphicsQuality: 'medium',
@@ -70,8 +71,10 @@ export const useGameStore = create<IGameState>((set, get) => ({
   lastSaveTick: 0,
   generated: false,
   pauseReason: null,
+  swingProgress: 0,
 
   setScreen: (screen) => set({ screen }),
+  triggerSwing: () => set({ swingProgress: 1.0 }),
 
   startGame: ({ worldId, worldName, seed, size, difficulty, playerPos }) => {
     clearActiveWorld();
@@ -111,7 +114,6 @@ export const useGameStore = create<IGameState>((set, get) => ({
     if (!lastId) return false;
     clearActiveWorld();
     set({ generated: true });
-    const { loadWorld } = await import('../save/saveManager');
     const loaded = await loadWorld(lastId);
     if (!loaded) {
       set({ generated: false });

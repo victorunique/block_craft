@@ -18,16 +18,19 @@ import { BlockId, isAir, isLiquid } from '../../../config/blocks';
 import { EntitySpawner } from '../../entities/spawner';
 import { getSkyColor, getSunAngle, getSunIntensity } from '../../world/timeSystem';
 import { useViewport } from '../../../hooks/useViewport';
+import { ANIMAL_SPECS, tickAnimalAI, rollAnimalDrops } from '../../animals/ai';
+import { MONSTER_SPECS, tickMonsterAI, applyDifficulty } from '../../monsters/ai';
 
 const CHUNK_KEYS = new Set<string>();
 
-function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkManager; getHeight: (x: number, z: number) => number; getBiome: (x: number, z: number) => string }) {
-  const { camera, gl } = useThree();
+function Player({ chunkManager, spawner, getHeight, getBiome }: { chunkManager: ChunkManager; spawner: EntitySpawner; getHeight: (x: number, z: number) => number; getBiome: (x: number, z: number) => string }) {
+  const { camera, gl, scene } = useThree();
   const playerPos = useGameStore((s) => s.playerPos);
   const updatePlayerTransform = useGameStore((s) => s.updatePlayerTransform);
   const isPaused = useGameStore((s) => s.isPaused);
   const screen = useGameStore((s) => s.screen);
   const setActiveSlot = useGameStore((s) => s.setActiveSlot);
+  const activeSlot = useGameStore((s) => s.activeSlot);
   const settings = useSettingsStore((s) => s.settings);
   const hotbar = useGameStore((s) => s.hotbar);
   const addItemToInventory = useGameStore((s) => s.addItemToInventory);
@@ -50,6 +53,11 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
   const lastUpdateRef = useRef<number>(0);
   const lastStoredPosRef = useRef<[number, number, number]>([playerPos[0], playerPos[1], playerPos[2]]);
 
+  const swingProgressRef = useRef(0);
+  const toolGroupRef = useRef<THREE.Group>(null);
+
+  // Camera and held tool group are added to the scene graph declaratively via <primitive object={camera}> in JSX
+
   useEffect(() => {
     const dist = Math.hypot(
       camera.position.x - playerPos[0],
@@ -69,8 +77,9 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
   useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).__bcCamera = camera;
+      (window as any).__bcScene = scene;
     }
-  }, [camera]);
+  }, [camera, scene]);
 
   useEffect(() => {
     chunkManagerRef.current = chunkManager;
@@ -270,6 +279,24 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
     }
     if (touchingCactus) damagePlayer(cappedDt, 'cactus');
 
+    if (swingProgressRef.current > 0) {
+      swingProgressRef.current = Math.max(0, swingProgressRef.current - cappedDt * 6);
+      useGameStore.setState({ swingProgress: swingProgressRef.current });
+    }
+    const progress = swingProgressRef.current;
+    const swingFactor = Math.sin(progress * Math.PI);
+    const side = settings.controlLayout === 'left-handed' ? -1 : 1;
+    if (toolGroupRef.current) {
+      toolGroupRef.current.position.copy(camera.position);
+      toolGroupRef.current.quaternion.copy(camera.quaternion);
+      toolGroupRef.current.translateX(0.25 * side - swingFactor * 0.15 * side);
+      toolGroupRef.current.translateY(-0.25 + swingFactor * 0.08);
+      toolGroupRef.current.translateZ(-0.45 + swingFactor * 0.1);
+      toolGroupRef.current.rotateX(-swingFactor * 1.0);
+      toolGroupRef.current.rotateY(swingFactor * 0.6 * side);
+      toolGroupRef.current.rotateZ(-swingFactor * 0.3 * side);
+    }
+
     void mouseRef;
     void onGroundRef;
     void viewport;
@@ -279,8 +306,103 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
     return raycastFromCamera(camera, (x, y, z) => chunkManager.getBlockAt(x, y, z), INTERACTION_REACH);
   }
 
+  function handleEntityHit(entityId: string, kind: 'monster' | 'animal') {
+    const s = useGameStore.getState();
+    const active = s.hotbar[s.activeSlot];
+
+    let damage = 2; // hand base damage
+    if (active) {
+      const blockId = active.blockId;
+      if (blockId === BlockId.WOODEN_SWORD) damage = 5;
+      else if (blockId === BlockId.STONE_SWORD) damage = 6;
+      else if (blockId === BlockId.IRON_SWORD) damage = 8;
+      else if (blockId === BlockId.WOODEN_AXE) damage = 4;
+      else if (blockId === BlockId.STONE_AXE) damage = 5;
+      else if (blockId === BlockId.IRON_AXE) damage = 6;
+      else if (blockId === BlockId.WOODEN_PICKAXE) damage = 3;
+      else if (blockId === BlockId.STONE_PICKAXE) damage = 4;
+      else if (blockId === BlockId.IRON_PICKAXE) damage = 5;
+    }
+
+    audio.playBreak();
+
+    let targetEntity: any = null;
+    const list = kind === 'animal' ? spawner.getAnimals() : spawner.getMonsters();
+    for (const ent of list) {
+      if (ent.id === entityId) {
+        targetEntity = ent;
+        break;
+      }
+    }
+
+    if (!targetEntity) return;
+
+    targetEntity.health -= damage;
+
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    const kPower = 4.0;
+    targetEntity.vel[0] = dir.x * kPower;
+    targetEntity.vel[2] = dir.z * kPower;
+    targetEntity.vel[1] = 3.0;
+
+    if (active && active.blockId >= BlockId.TOOL_BASE) {
+      s.applyDamageToTool('hotbar', s.activeSlot, 1);
+    }
+
+    if (targetEntity.health <= 0) {
+      audio.playBreak();
+      if (kind === 'animal') {
+        const spec = ANIMAL_SPECS[targetEntity.species];
+        if (spec) {
+          const drops = rollAnimalDrops(spec);
+          for (const d of drops) {
+            s.addItemToInventory(d.blockId, d.count);
+          }
+        }
+      }
+    } else {
+      if (kind === 'animal') {
+        targetEntity.state = 'flee';
+        targetEntity.stateTimer = 3000;
+      } else {
+        targetEntity.state = 'chase';
+      }
+    }
+  }
+
   function onLeftClick() {
+    swingProgressRef.current = 1.0;
+    useGameStore.getState().triggerSwing();
+
+    const entityGroups: THREE.Object3D[] = [];
+    scene.traverse((obj) => {
+      if (obj.userData && obj.userData.entityId) {
+        entityGroups.push(obj);
+      }
+    });
+
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    const ray = new THREE.Raycaster(camera.position, dir, 0, INTERACTION_REACH);
+    const intersects = ray.intersectObjects(entityGroups, true);
+
     const hit = getTargetBlock();
+    const blockDist = hit ? Math.hypot(hit.position[0] + 0.5 - camera.position.x, hit.position[1] + 0.5 - camera.position.y, hit.position[2] + 0.5 - camera.position.z) : Infinity;
+
+    if (intersects.length > 0 && intersects[0].distance < blockDist) {
+      let parent: THREE.Object3D | null = intersects[0].object;
+      while (parent && (!parent.userData || !parent.userData.entityId)) {
+        parent = parent.parent;
+      }
+      if (parent) {
+        const id = parent.userData.entityId;
+        const kind = parent.userData.entityKind;
+        handleEntityHit(id, kind);
+        return;
+      }
+    }
+
     if (!hit) return;
     const block = hit.block;
     if (block === BlockId.BEDROCK) return;
@@ -321,7 +443,11 @@ function Player({ chunkManager, getHeight, getBiome }: { chunkManager: ChunkMana
     s.removeItemFromInventory('hotbar', s.activeSlot, 1);
   }
 
-  return null;
+  return (
+    <group ref={toolGroupRef}>
+      <HeldTool activeItem={hotbar[activeSlot]} />
+    </group>
+  );
 }
 
 function dropForBlock(block: number): number {
@@ -446,11 +572,371 @@ function ChunkUpdater({ chunkManager }: { chunkManager: ChunkManager }) {
   return null;
 }
 
-function EntityRunner({ spawner }: { spawner: EntitySpawner }) {
+interface ArrowState {
+  id: string;
+  pos: [number, number, number];
+  vel: [number, number, number];
+}
+
+function EntityRunner({ spawner, chunkManager }: { spawner: EntitySpawner; chunkManager: ChunkManager }) {
+  const [entities, setEntities] = useState<any[]>([]);
+  const [arrows, setArrows] = useState<ArrowState[]>([]);
+  const lastEntityCountRef = useRef(0);
+  const entityRefs = useRef(new Map<string, THREE.Group>());
+  const arrowsRef = useRef<ArrowState[]>([]);
+
   useFrame((_, dt) => {
-    spawner.tick(dt * 1000);
+    const cappedDt = Math.min(dt, 1 / 20);
+    // Spawner tick spawns new entities and deletes dead ones in memory arrays
+    spawner.tick(cappedDt * 1000);
+
+    const currentAnimals = spawner.getAnimals();
+    const currentMonsters = spawner.getMonsters();
+    const totalCount = currentAnimals.length + currentMonsters.length;
+    if (totalCount !== lastEntityCountRef.current) {
+      lastEntityCountRef.current = totalCount;
+      setEntities([...currentAnimals, ...currentMonsters]);
+    }
+
+    const playerPos = useGameStore.getState().playerPos;
+
+    // 1. Tick peaceful animals AI & physics
+    for (const a of currentAnimals) {
+      const spec = ANIMAL_SPECS[a.species];
+      if (spec) {
+        const attacker = a.state === 'flee' ? playerPos : null;
+        tickAnimalAI(a, spec, attacker, cappedDt * 1000);
+
+        // Run terrain gravity / physics collision check
+        const res = updateEntityPosition(
+          a.pos,
+          a.vel,
+          [a.width, a.height],
+          cappedDt,
+          (x, y, z) => chunkManager.getBlockAt(x, y, z, true),
+          {}
+        );
+        a.pos = res.newPos;
+        a.vel = res.newVel;
+      }
+    }
+
+    // 2. Tick aggressive monsters AI & physics
+    for (const m of currentMonsters) {
+      const spec = MONSTER_SPECS[m.species];
+      if (spec) {
+        tickMonsterAI(m, spec, playerPos, cappedDt * 1000);
+
+        // Run terrain gravity / physics collision check
+        const res = updateEntityPosition(
+          m.pos,
+          m.vel,
+          [m.width, m.height],
+          cappedDt,
+          (x, y, z) => chunkManager.getBlockAt(x, y, z, true),
+          {}
+        );
+        m.pos = res.newPos;
+        m.vel = res.newVel;
+
+        // Handle monster attack triggers
+        if (m.state === 'attack' && (m as any).pendingAttack) {
+          (m as any).pendingAttack = false;
+
+          if (spec.ranged) {
+            // Skeleton shoots a 3D arrow!
+            const arrowId = `arr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+            const dx = playerPos[0] - m.pos[0];
+            const dy = (playerPos[1] + 1.22) - m.pos[1]; // target upper chest/eyes
+            const dz = playerPos[2] - m.pos[2];
+            const dist = Math.hypot(dx, dy, dz) || 1;
+            const arrowSpeed = 12.0; // speed in blocks/sec
+            const vel: [number, number, number] = [
+              (dx / dist) * arrowSpeed,
+              (dy / dist) * arrowSpeed,
+              (dz / dist) * arrowSpeed
+            ];
+            const newArrow: ArrowState = {
+              id: arrowId,
+              pos: [m.pos[0], m.pos[1] + 1.2, m.pos[2]],
+              vel
+            };
+            arrowsRef.current.push(newArrow);
+            setArrows([...arrowsRef.current]);
+          } else {
+            // Zombie / Spider melee attack
+            const diff = useGameStore.getState().difficulty;
+            const finalSpec = applyDifficulty(spec, diff);
+            useGameStore.getState().damagePlayer(finalSpec.damage);
+            audio.playHurt();
+          }
+        }
+      }
+    }
+
+    // 3. Tick arrows movement & collisions
+    const activeArrows = arrowsRef.current;
+    for (let i = activeArrows.length - 1; i >= 0; i--) {
+      const arr = activeArrows[i];
+      arr.pos[0] += arr.vel[0] * cappedDt;
+      arr.pos[1] += arr.vel[1] * cappedDt;
+      arr.pos[2] += arr.vel[2] * cappedDt;
+
+      const bx = Math.floor(arr.pos[0]);
+      const by = Math.floor(arr.pos[1]);
+      const bz = Math.floor(arr.pos[2]);
+      const block = chunkManager.getBlockAt(bx, by, bz);
+
+      const px = playerPos[0];
+      const py = playerPos[1];
+      const pz = playerPos[2];
+      const distToPlayer = Math.hypot(arr.pos[0] - px, arr.pos[1] - (py + 0.9), arr.pos[2] - pz);
+
+      let removeArrow = false;
+      if (block !== 0 && block !== 8) {
+        removeArrow = true;
+      } else if (distToPlayer < 0.8) {
+        removeArrow = true;
+        const diff = useGameStore.getState().difficulty;
+        const baseDmg = MONSTER_SPECS.skeleton.damage;
+        const finalSpec = applyDifficulty({ damage: baseDmg } as any, diff);
+        useGameStore.getState().damagePlayer(finalSpec.damage);
+        audio.playHurt();
+      }
+
+      if (removeArrow) {
+        activeArrows.splice(i, 1);
+        setArrows([...activeArrows]);
+      }
+    }
+
+    // 4. Synchronize 3D mesh translations and facing direction Y-rotations
+    const allEntities = [...currentAnimals, ...currentMonsters];
+    for (const ent of allEntities) {
+      const groupObj = entityRefs.current.get(ent.id);
+      if (groupObj) {
+        groupObj.position.set(ent.pos[0], ent.pos[1], ent.pos[2]);
+
+        const vx = ent.vel[0];
+        const vz = ent.vel[2];
+        if (Math.hypot(vx, vz) > 0.05) {
+          groupObj.rotation.y = Math.atan2(vx, vz);
+        }
+      }
+    }
   });
-  return null;
+
+  return (
+    <>
+      {entities.map((ent) => (
+        <EntityMesh key={ent.id} entity={ent} refsMap={entityRefs.current} />
+      ))}
+      {arrows.map((arr) => (
+        <mesh key={arr.id} position={arr.pos}>
+          <boxGeometry args={[0.08, 0.08, 0.4]} />
+          <meshLambertMaterial color="#8b5a2b" />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+function EntityMesh({ entity, refsMap }: { entity: any; refsMap: Map<string, THREE.Group> }) {
+  const species = entity.species;
+  let model: React.ReactNode = null;
+
+  if (species === 'cow') {
+    model = (
+      <group position={[0, -0.3, 0]}>
+        <mesh position={[0, 0.5, 0]}>
+          <boxGeometry args={[0.6, 0.45, 0.8]} />
+          <meshLambertMaterial color="#5c4033" />
+        </mesh>
+        <mesh position={[0, 0.75, 0.45]}>
+          <boxGeometry args={[0.3, 0.3, 0.3]} />
+          <meshLambertMaterial color="#5c4033" />
+        </mesh>
+        <mesh position={[-0.2, 0.15, -0.25]}>
+          <boxGeometry args={[0.12, 0.3, 0.12]} />
+          <meshLambertMaterial color="#ffffff" />
+        </mesh>
+        <mesh position={[0.2, 0.15, -0.25]}>
+          <boxGeometry args={[0.12, 0.3, 0.12]} />
+          <meshLambertMaterial color="#ffffff" />
+        </mesh>
+        <mesh position={[-0.2, 0.15, 0.25]}>
+          <boxGeometry args={[0.12, 0.3, 0.12]} />
+          <meshLambertMaterial color="#ffffff" />
+        </mesh>
+        <mesh position={[0.2, 0.15, 0.25]}>
+          <boxGeometry args={[0.12, 0.3, 0.12]} />
+          <meshLambertMaterial color="#ffffff" />
+        </mesh>
+      </group>
+    );
+  } else if (species === 'pig') {
+    model = (
+      <group position={[0, -0.3, 0]}>
+        <mesh position={[0, 0.4, 0]}>
+          <boxGeometry args={[0.5, 0.4, 0.7]} />
+          <meshLambertMaterial color="#ffb6c1" />
+        </mesh>
+        <mesh position={[0, 0.55, 0.38]}>
+          <boxGeometry args={[0.25, 0.25, 0.25]} />
+          <meshLambertMaterial color="#ffb6c1" />
+        </mesh>
+        <mesh position={[-0.15, 0.1, -0.2]}>
+          <boxGeometry args={[0.1, 0.2, 0.1]} />
+          <meshLambertMaterial color="#ffb6c1" />
+        </mesh>
+        <mesh position={[0.15, 0.1, -0.2]}>
+          <boxGeometry args={[0.1, 0.2, 0.1]} />
+          <meshLambertMaterial color="#ffb6c1" />
+        </mesh>
+        <mesh position={[-0.15, 0.1, 0.2]}>
+          <boxGeometry args={[0.1, 0.2, 0.1]} />
+          <meshLambertMaterial color="#ffb6c1" />
+        </mesh>
+        <mesh position={[0.15, 0.1, 0.2]}>
+          <boxGeometry args={[0.1, 0.2, 0.1]} />
+          <meshLambertMaterial color="#ffb6c1" />
+        </mesh>
+      </group>
+    );
+  } else if (species === 'chicken') {
+    model = (
+      <group position={[0, -0.4, 0]}>
+        <mesh position={[0, 0.3, 0]}>
+          <boxGeometry args={[0.25, 0.25, 0.3]} />
+          <meshLambertMaterial color="#ffffff" />
+        </mesh>
+        <mesh position={[0, 0.45, 0.12]}>
+          <boxGeometry args={[0.15, 0.18, 0.15]} />
+          <meshLambertMaterial color="#ffffff" />
+        </mesh>
+        <mesh position={[0, 0.46, 0.22]}>
+          <boxGeometry args={[0.08, 0.05, 0.08]} />
+          <meshLambertMaterial color="#ff8c00" />
+        </mesh>
+        <mesh position={[-0.06, 0.1, 0]}>
+          <boxGeometry args={[0.04, 0.18, 0.04]} />
+          <meshLambertMaterial color="#ffa500" />
+        </mesh>
+        <mesh position={[0.06, 0.1, 0]}>
+          <boxGeometry args={[0.04, 0.18, 0.04]} />
+          <meshLambertMaterial color="#ffa500" />
+        </mesh>
+      </group>
+    );
+  } else if (species === 'zombie') {
+    model = (
+      <group position={[0, -0.9, 0]}>
+        <mesh position={[0, 1.7, 0]}>
+          <boxGeometry args={[0.25, 0.25, 0.25]} />
+          <meshLambertMaterial color="#3cb371" />
+        </mesh>
+        <mesh position={[0, 1.25, 0]}>
+          <boxGeometry args={[0.3, 0.6, 0.16]} />
+          <meshLambertMaterial color="#0000ff" />
+        </mesh>
+        <mesh position={[-0.2, 1.25, 0.12]} rotation={[Math.PI / 2, 0, 0]}>
+          <boxGeometry args={[0.1, 0.1, 0.3]} />
+          <meshLambertMaterial color="#3cb371" />
+        </mesh>
+        <mesh position={[0.2, 1.25, 0.12]} rotation={[Math.PI / 2, 0, 0]}>
+          <boxGeometry args={[0.1, 0.1, 0.3]} />
+          <meshLambertMaterial color="#3cb371" />
+        </mesh>
+        <mesh position={[-0.08, 0.45, 0]}>
+          <boxGeometry args={[0.1, 0.9, 0.1]} />
+          <meshLambertMaterial color="#00008b" />
+        </mesh>
+        <mesh position={[0.08, 0.45, 0]}>
+          <boxGeometry args={[0.1, 0.9, 0.1]} />
+          <meshLambertMaterial color="#00008b" />
+        </mesh>
+      </group>
+    );
+  } else if (species === 'skeleton') {
+    model = (
+      <group position={[0, -0.9, 0]}>
+        <mesh position={[0, 1.7, 0]}>
+          <boxGeometry args={[0.25, 0.25, 0.25]} />
+          <meshLambertMaterial color="#dcdcdc" />
+        </mesh>
+        <mesh position={[0, 1.25, 0]}>
+          <boxGeometry args={[0.18, 0.6, 0.1]} />
+          <meshLambertMaterial color="#dcdcdc" />
+        </mesh>
+        <mesh position={[-0.13, 1.25, 0.12]} rotation={[Math.PI / 2, 0, 0]}>
+          <boxGeometry args={[0.05, 0.05, 0.3]} />
+          <meshLambertMaterial color="#dcdcdc" />
+        </mesh>
+        <mesh position={[0.13, 1.25, 0.12]} rotation={[Math.PI / 2, 0, 0]}>
+          <boxGeometry args={[0.05, 0.05, 0.3]} />
+          <meshLambertMaterial color="#dcdcdc" />
+        </mesh>
+        <mesh position={[-0.06, 0.45, 0]}>
+          <boxGeometry args={[0.05, 0.9, 0.05]} />
+          <meshLambertMaterial color="#dcdcdc" />
+        </mesh>
+        <mesh position={[0.06, 0.45, 0]}>
+          <boxGeometry args={[0.05, 0.9, 0.05]} />
+          <meshLambertMaterial color="#dcdcdc" />
+        </mesh>
+      </group>
+    );
+  } else if (species === 'spider') {
+    model = (
+      <group position={[0, -0.15, 0]}>
+        <mesh position={[0, 0.15, 0]}>
+          <boxGeometry args={[0.5, 0.3, 0.6]} />
+          <meshLambertMaterial color="#303030" />
+        </mesh>
+        <mesh position={[0, 0.15, 0.35]}>
+          <boxGeometry args={[0.25, 0.2, 0.25]} />
+          <meshLambertMaterial color="#000000" />
+        </mesh>
+        <mesh position={[-0.35, 0.1, 0]} rotation={[0, 0, Math.PI / 6]}>
+          <boxGeometry args={[0.3, 0.05, 0.05]} />
+          <meshLambertMaterial color="#000000" />
+        </mesh>
+        <mesh position={[0.35, 0.1, 0]} rotation={[0, 0, -Math.PI / 6]}>
+          <boxGeometry args={[0.3, 0.05, 0.05]} />
+          <meshLambertMaterial color="#000000" />
+        </mesh>
+        <mesh position={[-0.35, 0.1, 0.15]} rotation={[0, 0.2, Math.PI / 6]}>
+          <boxGeometry args={[0.3, 0.05, 0.05]} />
+          <meshLambertMaterial color="#000000" />
+        </mesh>
+        <mesh position={[0.35, 0.1, 0.15]} rotation={[0, -0.2, -Math.PI / 6]}>
+          <boxGeometry args={[0.3, 0.05, 0.05]} />
+          <meshLambertMaterial color="#000000" />
+        </mesh>
+        <mesh position={[-0.35, 0.1, -0.15]} rotation={[0, -0.2, Math.PI / 6]}>
+          <boxGeometry args={[0.3, 0.05, 0.05]} />
+          <meshLambertMaterial color="#000000" />
+        </mesh>
+        <mesh position={[0.35, 0.1, -0.15]} rotation={[0, 0.2, -Math.PI / 6]}>
+          <boxGeometry args={[0.3, 0.05, 0.05]} />
+          <meshLambertMaterial color="#000000" />
+        </mesh>
+      </group>
+    );
+  }
+
+  return (
+    <group
+      ref={(el) => {
+        if (el) refsMap.set(entity.id, el);
+        else refsMap.delete(entity.id);
+      }}
+      position={entity.pos}
+      userData={{ entityId: entity.id, entityKind: entity.kind }}
+    >
+      {model}
+    </group>
+  );
 }
 
 function GameTick() {
@@ -490,9 +976,9 @@ export default function GameEngine({ chunkManager, spawner }: Props) {
       <SunAndSky />
       <WorldChunks chunkManager={chunkManager} />
       <BlockHighlight chunkManager={chunkManager} />
-      <Player chunkManager={chunkManager} getHeight={getHeight} getBiome={getBiome} />
+      <Player chunkManager={chunkManager} spawner={spawner} getHeight={getHeight} getBiome={getBiome} />
       <ChunkUpdater chunkManager={chunkManager} />
-      <EntityRunner spawner={spawner} />
+      <EntityRunner spawner={spawner} chunkManager={chunkManager} />
       <GameTick />
       <PointerLockControls />
     </Canvas>
@@ -537,4 +1023,118 @@ export function createSpawner(chunkManager: ChunkManager, seed: number, worldSiz
     timeOfDay: () => useGameStore.getState().timeOfDay,
     worldSize,
   });
+}
+
+function HeldTool({ activeItem }: { activeItem: any }) {
+  if (!activeItem) {
+    // Bare Hand
+    return (
+      <mesh position={[0, -0.05, 0]}>
+        <boxGeometry args={[0.07, 0.07, 0.25]} />
+        <meshLambertMaterial color="#e0a96d" />
+      </mesh>
+    );
+  }
+
+  const blockId = activeItem.blockId;
+  const isSword = [BlockId.WOODEN_SWORD, BlockId.STONE_SWORD, BlockId.IRON_SWORD].includes(blockId);
+  const isPickaxe = [BlockId.WOODEN_PICKAXE, BlockId.STONE_PICKAXE, BlockId.IRON_PICKAXE].includes(blockId);
+  const isAxe = [BlockId.WOODEN_AXE, BlockId.STONE_AXE, BlockId.IRON_AXE].includes(blockId);
+
+  // Decide material color
+  let matColor = '#ffffff';
+  if (blockId === BlockId.WOODEN_SWORD || blockId === BlockId.WOODEN_PICKAXE || blockId === BlockId.WOODEN_AXE) {
+    matColor = '#A0522D';
+  } else if (blockId === BlockId.STONE_SWORD || blockId === BlockId.STONE_PICKAXE || blockId === BlockId.STONE_AXE) {
+    matColor = '#808080';
+  } else if (blockId === BlockId.IRON_SWORD || blockId === BlockId.IRON_PICKAXE || blockId === BlockId.IRON_AXE) {
+    matColor = '#D3D3D3';
+  }
+
+  if (isSword) {
+    return (
+      <group rotation={[0, 0, 0]}>
+        {/* Handle */}
+        <mesh position={[0, 0, 0.05]}>
+          <boxGeometry args={[0.02, 0.02, 0.12]} />
+          <meshLambertMaterial color="#8B5A2B" />
+        </mesh>
+        {/* Guard */}
+        <mesh position={[0, 0, -0.02]}>
+          <boxGeometry args={[0.1, 0.03, 0.03]} />
+          <meshLambertMaterial color="#8B5A2B" />
+        </mesh>
+        {/* Blade */}
+        <mesh position={[0, 0, -0.25]}>
+          <boxGeometry args={[0.04, 0.015, 0.42]} />
+          <meshLambertMaterial color={matColor} />
+        </mesh>
+      </group>
+    );
+  }
+
+  if (isPickaxe) {
+    return (
+      <group rotation={[0, 0, 0]}>
+        {/* Handle */}
+        <mesh position={[0, 0, -0.05]} rotation={[Math.PI / 4, 0, 0]}>
+          <boxGeometry args={[0.02, 0.02, 0.3]} />
+          <meshLambertMaterial color="#8B5A2B" />
+        </mesh>
+        {/* Head */}
+        <mesh position={[0, 0.1, -0.15]} rotation={[0, 0, 0]}>
+          <boxGeometry args={[0.22, 0.03, 0.03]} />
+          <meshLambertMaterial color={matColor} />
+        </mesh>
+      </group>
+    );
+  }
+
+  if (isAxe) {
+    return (
+      <group rotation={[0, 0, 0]}>
+        {/* Handle */}
+        <mesh position={[0, 0, -0.05]} rotation={[Math.PI / 4, 0, 0]}>
+          <boxGeometry args={[0.02, 0.02, 0.3]} />
+          <meshLambertMaterial color="#8B5A2B" />
+        </mesh>
+        {/* Head */}
+        <mesh position={[0.04, 0.08, -0.15]}>
+          <boxGeometry args={[0.08, 0.08, 0.03]} />
+          <meshLambertMaterial color={matColor} />
+        </mesh>
+      </group>
+    );
+  }
+
+  // Otherwise, it's a block or item. Render a small block!
+  return (
+    <mesh position={[0, 0, 0]}>
+      <boxGeometry args={[0.12, 0.12, 0.12]} />
+      <meshLambertMaterial color={getBlockColor(blockId)} />
+    </mesh>
+  );
+}
+
+function getBlockColor(blockId: number): string {
+  switch (blockId) {
+    case BlockId.DIRT: return '#865d36';
+    case BlockId.GRASS: return '#557a46';
+    case BlockId.STONE: return '#808080';
+    case BlockId.WOOD: return '#8b5a2b';
+    case BlockId.LEAVES: return '#3f5e2f';
+    case BlockId.SAND: return '#e1c699';
+    case BlockId.BRICK: return '#b22222';
+    case BlockId.GLASS: return '#aed8f2';
+    case BlockId.WATER: return '#3b5998';
+    case BlockId.FURNACE: return '#5a5a5a';
+    case BlockId.TORCH: return '#ffcc00';
+    case BlockId.COBBLESTONE: return '#7a7a7a';
+    case BlockId.CLAY: return '#9aa0a6';
+    case BlockId.COAL_ORE: return '#4a4a4a';
+    case BlockId.IRON_ORE: return '#d4af37';
+    case BlockId.GOLD_ORE: return '#ffd700';
+    case BlockId.DIAMOND_ORE: return '#00ffff';
+    default: return '#ffffff';
+  }
 }

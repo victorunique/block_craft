@@ -201,18 +201,27 @@ BlockCraft satisfies the vision of a **zero-install, zero-account, client-only**
   * Furnace (requires 8 Cobblestone/Stone ➔ outputs 1 Furnace)
   * Glass (requires 1 Sand + 1 Coal fuel, smelted in a Furnace ➔ outputs 1 Glass)
   * Brick (requires 1 Clay + 1 Coal fuel, smelted in a Furnace ➔ outputs 1 Brick)
+  * Steak (requires 1 Raw Beef + 1 Coal fuel, smelted in a Furnace ➔ outputs 1 Steak)
+  * Cooked Porkchop (requires 1 Raw Pork + 1 Coal fuel, smelted in a Furnace ➔ outputs 1 Cooked Porkchop)
+  * Cooked Chicken (requires 1 Raw Chicken + 1 Coal fuel, smelted in a Furnace ➔ outputs 1 Cooked Chicken)
 
 ### 11.5. Entities & Artificial Intelligence
 * **Aggressive Monsters (Zombies, Skeletons, Spiders):**
   * Spawn only during the Night or in dark cave regions (light level < 4).
   * Zombie: Slow melee damage, chases player.
-  * Skeleton: Ranged attack (shoots arrows).
+  * Skeleton: Ranged attack (shoots arrow entities targeting the player).
   * Spider: Fast, climbs vertical surfaces.
-  * AI behavior: Wanders randomly when player is out of range. Chases player directly when within a 16-block detection sphere.
+  * AI behavior: Wanders randomly when player is out of range. Chases player directly when within a 16-block detection sphere. Mutates AI tick functions on every frame update.
 * **Peaceful Animals (Cows, Pigs, Chickens):**
   * Spawn during the Day on Grass biomes.
   * Wander randomly. Flee briefly when attacked.
   * Drop resources (Beef, Pork, Chicken, Leather, Feathers) upon death.
+* **3D Entity Models & Rendering:**
+  * Rendered as multi-box 3D models matching the Minecraft-like blocky aesthetic inside the 3D Canvas (Cows are brown, Pigs pink, Chickens white, Zombies green, Skeletons gray, Spiders black).
+  * Entity physics collision and gravity checks run on the main thread via standard AABB calculations to prevent clipping through terrain.
+* **First-Person Tool Swing Animation:**
+  * A 3D visual first-person held tool or arm model is rendered in the bottom right corner (or bottom left, matching the handedness setting).
+  * Triggers a smooth swing animation (rotation and displacement) when the player left-clicks to mine blocks or attack entities.
 * **Entity Spawning Caps:** Restrict active monster count to 30 and active animal count to 20 to avoid CPU overhead.
 
 ### 11.6. Day/Night & Environment

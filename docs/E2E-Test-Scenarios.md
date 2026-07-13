@@ -148,3 +148,42 @@ Date: 2026-07-11
 * **Modal Triggering:** The soft warning modal interrupts the generation flow instantly when a Tier 1 device selects the Large world size.
 * **Modal Contents:** The modal warns: *"This device has limited memory. We recommend a Small or Medium world for the best performance. A Large world might cause the browser tab to restart."*
 * **Generation Execution:** Clicking "Create Anyway" bypasses the check, launching the loading loop while adjusting WebGL memory allocations to match performance guardrails.
+
+---
+
+## E2E-SC-005: 3D Mob Combat, Projectiles, and Saturation Smelting
+
+**Objective:** Verify first-person held items display and handedness transitions, 3D entity movement/physics, combat interactions (melee raycasting, knockback, animal flee / monster chase), Skeleton 3D arrow attacks, and furnace food smelting.
+
+### 1. Journey Path & UI Transitions
+```
+[Gameplay Loop] ──(Select Sword)──► [Held Item Model Displays]
+        │
+(Left-Click Mobs) ──(Mob Dies)──► [Direct Inventory Drop Reward]
+        │
+(Take Damage) ──(Health Declines) ──► [Furnace Smelting GUI]
+                                             │
+                                     (Cook Raw Beef)
+                                             ▼
+                                     [Consume Steak]
+                                             │
+                                   (Saturation Restored)
+```
+
+### 2. Scenario Steps
+1. Navigate to Settings and set Handedness to **Right-Handed**. Return to gameplay.
+2. Select a Wooden Sword in the hotbar. Observe the sword rendering on the lower right of the camera viewport.
+3. Click **Left Click** and verify the sword plays a swinging rotation and translation arc.
+4. Toggle Handedness to **Left-Handed** in Settings. Observe that the sword instantly mirrors to the left of the screen and swings from the left on left click.
+5. Target a Cow spawned nearby. Attack it using the sword. Verify the cow receives knockback velocity, plays a hit sound, and flee-wanders away for 3 seconds.
+6. Continue attacking the cow until its health drops to 0. Verify the cow is removed from the world, and Raw Beef and Leather are added directly to the inventory.
+7. Open the placed Furnace GUI. Place Coal in the fuel slot and Raw Beef in the smelting input slot.
+8. Observe the burning animation and progress bar. Once completed, verify Raw Beef is consumed and 1 Steak is placed in the output slot.
+9. Take damage from a Zombie or Skeleton arrow until health is reduced.
+10. Put Steak in the active hotbar slot, and right-click to eat it. Verify hunger saturation increases and health regenerates.
+
+### 3. Verification Criteria
+* **Swing Geometry Alignment:** Held item positions align precisely with the chosen handedness setting and update orientation dynamically on click.
+* **Combat Raycasting Resolution:** Hit checks trigger on closest targeted entity within reach. Block breaking is bypassed during mob hit rays.
+* **Drop Logic Execution:** Animal resource drops are added directly to Zustand store inventory arrays without physical drops spawning.
+* **Smelting Saturation Mechanics:** Cooked foods yield significantly higher hunger saturation values than raw ingredients when consumed.

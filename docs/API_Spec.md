@@ -63,6 +63,7 @@ export interface IGameState {
   oxygen: number;          // 0 to 100 (for underwater breathing)
   playerPos: [number, number, number];
   playerRot: [number, number]; // pitch, yaw
+  swingProgress: number;   // 0.0 to 1.0 (first-person held weapon swing animation status)
   
   // --- Inventory Slots ---
   activeSlot: number;      // Selected hotbar index (0-8)
@@ -98,6 +99,7 @@ export interface IGameState {
   setOxygen: (oxygen: number) => void;
   tickOxygen: (deltaSeconds: number, isHeadUnderwater: boolean) => void;
   updatePlayerTransform: (pos: [number, number, number], rot: [number, number]) => void;
+  triggerSwing: () => void;
 
   // --- Inventory & Crafting Actions ---
   setActiveSlot: (slot: number) => void;

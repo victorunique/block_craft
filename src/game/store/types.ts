@@ -47,8 +47,10 @@ export interface IGameState {
   lastSaveTick: number;
   generated: boolean;
   pauseReason: 'manual' | 'health' | null;
+  swingProgress: number;
 
   setScreen: (screen: Screen) => void;
+  triggerSwing: () => void;
   startGame: (params: {
     worldId: string;
     worldName: string;

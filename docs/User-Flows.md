@@ -169,6 +169,28 @@ graph TD
 6. Toggling any setting applies changes instantly (e.g., render distance adjustments recalculate chunk visibility, volume slider updates web audio gain nodes).
 7. Player clicks **Close Settings** and then **Resume Game** to return to the active frozen frame.
 
+#### Furnace Smelting & Cooking Flow:
+1. Player targets a placed Furnace block in the world and **Right Clicks** (or taps the block on mobile).
+2. The **Furnace Interface** opens as a dim-blurred overlay, featuring three slot areas:
+   * **Input Slot (Top):** The item to be smelted/cooked (e.g., Raw Beef, Sand, Clay).
+   * **Fuel Slot (Bottom):** The heat source (e.g., Coal).
+   * **Output Slot (Right):** The resulting cooked/smelted item (e.g., Steak, Glass, Brick).
+3. Player drags fuel and materials into their respective slots.
+4. The furnace begins burning, displaying a flame countdown animation and a cooking progress bar.
+5. Once cooked, raw items and fuel are consumed, and the finished cooked food or material block appears in the Output Slot.
+6. Player collects the cooked item into their inventory hotbar and closes the GUI.
+
+#### Mob Combat & Spawner Interaction Flow:
+1. Player selects a weapon (e.g., Wooden Sword) or tool from their hotbar.
+2. The weapon/tool renders as a 3D blocky mesh in the first-person view, positioned on the right (or left if "Left-Handed" layout is enabled in Settings).
+3. On **Left Click**, the weapon swings in a smooth rotational and translational arc.
+4. Targeting a nearby mob (cow, pig, chicken, zombie, skeleton, spider) and left-clicking checks for hits within reach.
+5. Hitting a mob deals damage, plays hit sounds, and inflicts knockback:
+   * **Peaceful Animals (Cow, Pig, Chicken):** Enter a fleeing state, running away from the player at double speed for 3 seconds.
+   * **Aggressive Monsters (Zombie, Spider):** Chase the player and deal melee damage upon contact.
+   * **Skeletons:** Aim and fire traveling 3D arrow projectiles at the player. Player must dodge or take damage.
+6. Defeating a mob removes it from the spawner and awards its drops (raw food, leather, feathers) directly into the player's inventory, playing a soft collection sound.
+
 ---
 
 ## 4. Screen Transition Details

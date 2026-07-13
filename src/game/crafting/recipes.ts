@@ -124,6 +124,24 @@ export const SMELTING_RECIPES: SmeltingRecipe[] = [
     input: { blockId: BlockId.GOLD_ORE, count: 1 },
     fuel: { blockId: BlockId.COAL_ITEM, count: 1 },
   },
+  {
+    id: 'steak',
+    output: { blockId: BlockId.COOKED_BEEF, count: 1 },
+    input: { blockId: BlockId.BEEF, count: 1 },
+    fuel: { blockId: BlockId.COAL_ITEM, count: 1 },
+  },
+  {
+    id: 'cooked_porkchop',
+    output: { blockId: BlockId.COOKED_PORK, count: 1 },
+    input: { blockId: BlockId.PORK, count: 1 },
+    fuel: { blockId: BlockId.COAL_ITEM, count: 1 },
+  },
+  {
+    id: 'cooked_chicken',
+    output: { blockId: BlockId.COOKED_CHICKEN, count: 1 },
+    input: { blockId: BlockId.CHICKEN, count: 1 },
+    fuel: { blockId: BlockId.COAL_ITEM, count: 1 },
+  },
 ];
 
 import type { SmeltingRecipe } from './types';

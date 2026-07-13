@@ -245,3 +245,67 @@ Date: 2026-07-11
   1. Click **Quit to Title Menu** button.  
 * **Expected Result:** The Save Manager immediately triggers a synchronous write of player attributes and chunk modifications to IndexedDB, clears active game memory, releases WebGL buffers, and loads the Main Menu.  
 * **Priority:** Critical  
+
+---
+
+## 7. 3D Entities, AI, and First-Person Visual Feedback (HUD / Combat)
+
+### Feature: 3D Entities, AI, and First-Person Visual Feedback
+* **Test Case ID:** FT-ENT-001  
+* **Feature Name:** First-Person Tool Swing Animation  
+* **Preconditions:** Player has a Wooden Sword in their active slot. Handedness is set to "Right-Handed".  
+* **Steps:**  
+  1. Observe the screen in first-person mode.  
+  2. Click **Left Click**.  
+  3. Toggle handedness to "Left-Handed" in settings, and click **Left Click** again.  
+* **Expected Result:** The 3D model of the Wooden Sword is displayed on the right side of the screen. Clicking left click triggers a swinging arc animation (rotation and translation). After toggling to left-handed layout, the sword model mirrors to the left side and plays the swing animation from the left.  
+* **Priority:** High  
+
+* **Test Case ID:** FT-ENT-002  
+* **Feature Name:** Peaceful Animals Wander and Flee AI  
+* **Preconditions:** A cow is spawned in front of the player.  
+* **Steps:**  
+  1. Observe the cow's movement.  
+  2. Attack the cow by left-clicking it.  
+  3. Observe the cow's behavior.  
+* **Expected Result:** The cow wanders randomly. When hit, it takes damage, plays a hit sound, receives knockback, and enters a fleeing state (moving away from the player at higher speed) for 3 seconds before returning to random wandering.  
+* **Priority:** High  
+
+* **Test Case ID:** FT-ENT-003  
+* **Feature Name:** Aggressive Monsters Chase and Combat Mechanics  
+* **Preconditions:** A zombie is spawned at night. Player is within 16 blocks of the zombie.  
+* **Steps:**  
+  1. Observe the zombie's movement.  
+  2. Let the zombie approach the player.  
+  3. Left-click the zombie with a sword to damage it.  
+* **Expected Result:** The zombie chases the player when inside detection range. Upon reaching the player, it inflicts melee damage and plays a hurt sound. Left-clicking the zombie applies damage, plays a hit sound, and applies knockback.  
+* **Priority:** Critical  
+
+* **Test Case ID:** FT-ENT-004  
+* **Feature Name:** Skeleton Projectiles and Collision  
+* **Preconditions:** A skeleton is spawned at night. Player is within 12 blocks of the skeleton.  
+* **Steps:**  
+  1. Target the skeleton.  
+  2. Observe the skeleton's attack.  
+  3. Dodge the incoming arrow or let it hit the player.  
+* **Expected Result:** The skeleton stops to aim and fires a 3D arrow projectile towards the player every 1.5 seconds. If the arrow hits a block, it is destroyed. If the arrow hits the player, it inflicts damage, plays a hurt sound, and is destroyed.  
+* **Priority:** High  
+
+* **Test Case ID:** FT-ENT-005  
+* **Feature Name:** Mob Resource Drops Collection  
+* **Preconditions:** Player targets a cow with low health.  
+* **Steps:**  
+  1. Attack the cow until its health drops to 0.  
+  2. Observe drops added to inventory.  
+* **Expected Result:** Upon death, the cow's health drops to 0 and it is removed from the spawner. Resources (Beef and Leather) are added directly into the player's inventory, displaying a notification or showing updated slots in the inventory hotbar.  
+* **Priority:** High  
+
+* **Test Case ID:** FT-ENT-006  
+* **Feature Name:** Raw Food Furnace Cooking Smelting  
+* **Preconditions:** Furnace is placed. Player has Raw Beef and Coal.  
+* **Steps:**  
+  1. Open the Furnace GUI.  
+  2. Place Coal in the fuel slot and Raw Beef in the input slot.  
+  3. Observe the progress bar and output slot.  
+* **Expected Result:** Raw beef begins smelting. Once progress completes, 1 Coal and 1 Raw Beef are consumed, and 1 Steak item is produced in the output slot.  
+* **Priority:** High

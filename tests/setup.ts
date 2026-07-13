@@ -50,3 +50,34 @@ if (typeof window !== 'undefined' && !(window as any).PointerLockControls) {
     dispose() {}
   };
 }
+
+// Global Console Filters to suppress React-Three-Fiber JSDOM DOM element warnings
+const originalWarn = console.warn;
+const originalError = console.error;
+
+console.warn = (...args) => {
+  const combined = args.map(a => String(a)).join(' ');
+  if (
+    combined.includes('casing') ||
+    combined.includes('unrecognized') ||
+    combined.includes('meshLambertMaterial')
+  ) {
+    return;
+  }
+  originalWarn(...args);
+};
+
+console.error = (...args) => {
+  const combined = args.map(a => String(a)).join(' ');
+  if (
+    combined.includes('unrecognized') ||
+    combined.includes('React does not recognize') ||
+    combined.includes('non-boolean attribute') ||
+    combined.includes('depthWrite') ||
+    combined.includes('frustumCulled') ||
+    combined.includes('casing')
+  ) {
+    return;
+  }
+  originalError(...args);
+};

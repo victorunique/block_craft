@@ -26,6 +26,7 @@ vi.mock('../../../src/game/rendering/textureAtlas', () => {
 });
 
 describe('ChunkMesh', () => {
+
   test('renders successfully when there are only water blocks and no solid blocks', async () => {
     const mockEntry: ChunkEntry = {
       cx: 0,

@@ -99,6 +99,9 @@ export const FOOD_VALUES: Partial<Record<number, FoodValue>> = {
   [BlockId.PORK]: { hunger: 3 },
   [BlockId.CHICKEN]: { hunger: 2 },
   [BlockId.APPLE]: { hunger: 4 },
+  [BlockId.COOKED_BEEF]: { hunger: 8 },
+  [BlockId.COOKED_PORK]: { hunger: 8 },
+  [BlockId.COOKED_CHICKEN]: { hunger: 6 },
 };
 
 export const DURABILITY_MAX: Partial<Record<number, number>> = {
