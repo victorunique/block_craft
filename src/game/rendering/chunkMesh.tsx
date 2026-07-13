@@ -59,11 +59,13 @@ export function ChunkMesh({ entry }: ChunkMeshProps) {
     waterGeometry.setAttribute('normal', new THREE.BufferAttribute(m.waterNormals, 3));
     waterGeometry.setAttribute('uv', new THREE.BufferAttribute(m.waterUvs, 2));
     waterGeometry.setIndex(new THREE.BufferAttribute(m.waterIndices, 1));
+    waterGeometry.computeBoundingSphere();
 
     crossGeometry.setAttribute('position', new THREE.BufferAttribute(m.crossPositions, 3));
     crossGeometry.setAttribute('normal', new THREE.BufferAttribute(m.crossNormals, 3));
     crossGeometry.setAttribute('uv', new THREE.BufferAttribute(m.crossUvs, 2));
     crossGeometry.setIndex(new THREE.BufferAttribute(m.crossIndices, 1));
+    crossGeometry.computeBoundingSphere();
   }, [entry.mesh, geometry, waterGeometry, crossGeometry]);
 
   useEffect(() => {
@@ -89,7 +91,7 @@ export function ChunkMesh({ entry }: ChunkMeshProps) {
       )}
       {hasWater && (
         <mesh geometry={waterGeometry} frustumCulled>
-          <meshLambertMaterial map={atlas.texture} transparent opacity={0.7} depthWrite={false} />
+          <meshLambertMaterial map={atlas.texture} transparent opacity={0.7} depthWrite={false} side={THREE.DoubleSide} />
         </mesh>
       )}
       {hasCross && (
