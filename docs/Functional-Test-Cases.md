@@ -234,7 +234,7 @@ Date: 2026-07-11
 * **Feature Name:** Backup World Download  
 * **Preconditions:** Pause Menu open. Active worldId is set in save database.  
 * **Steps:**  
-  1. Click **Backup World (.json)** button.  
+  1. Click **Backup World (.blockcraft)** button.  
 * **Expected Result:** The browser triggers a file download of a file named `${world_name}.blockcraft` containing the JSON representation of world metadata, inventories, and chunk modifications. A toast appears: *"Backup saved! Save this file to keep your progress safe."*  
 * **Priority:** Critical  
 

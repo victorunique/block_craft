@@ -108,7 +108,7 @@ Date: 2026-07-11
 
 ### 2. Scenario Steps
 1. In Browser A, play BlockCraft. Create a world named `"Migration World"`. Modify several blocks in the terrain.
-2. Open the Pause Menu and click **Backup World (.json)**.
+2. Open the Pause Menu and click **Backup World (.blockcraft)**.
 3. Browser downloads `Migration World.blockcraft` containing serialized structures.
 4. Launch Browser B (clean state, no saves). Verify the **Continue** button is disabled.
 5. Click **Import Save** on the Main Menu. Select `Migration World.blockcraft` in the OS file picker.

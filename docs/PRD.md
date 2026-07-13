@@ -181,7 +181,7 @@ BlockCraft satisfies the vision of a **zero-install, zero-account, client-only**
 
 ### 11.3. Physics & Collisions
 * **AABB Collisions:** Custom axis-aligned bounding box collision calculation. Check player bounding box against the immediately surrounding `3 × 3 × 3` solid blocks.
-* **Movement Dynamics:** Standard acceleration, drag, gravity constant, terminal velocity, and step-climbing (auto-stepping over 0.5-block steps).
+* **Movement Dynamics:** Standard acceleration, drag, gravity constant, and terminal velocity. Auto-stepping / automatic climbing is disabled; the player must actively jump to climb up one layer of solid block. When submerged in water, continuous jumping (swimming/rising) is supported, allowing players to emerge and jump ashore.
 * **Raycasting:** Use a Three.js Raycaster originating from the player's camera to identify targeted blocks within a maximum interaction reach of `5` blocks. Highlight the targeted block face.
 
 ### 11.4. Inventory & Crafting

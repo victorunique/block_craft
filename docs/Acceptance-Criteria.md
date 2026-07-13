@@ -46,7 +46,7 @@ Date: 2026-07-11
 * **Acceptance Conditions:**
   - Entity collisions are evaluated against block bounding boxes in a local $3 \times 3 \times 3$ grid surrounding the entity.
   - Acceleration, gravity, drag constants, and terminal velocity constants govern motion.
-  - Step climbing slides the player up over elevations $\le 0.5$ blocks without halting movement.
+  - Auto-stepping / automatic climbing is disabled; players must actively press jump to scale solid blocks. Continuous jump is supported in water to swim/ascend and jump onto land.
   - Three.js camera Raycaster highlights the targeted block face within a maximum interaction range of 5 blocks.
 * **Definition of Done (DoD):**
   - Collision calculations prevent clipping through solid blocks (walls, ceilings, floors).

@@ -2,6 +2,8 @@ import { useSettingsStore } from '../../store/settingsStore';
 import { useGameStore } from '../../store/gameStore';
 import { useInputStore } from '../../store/inputStore';
 import { useEffect, useRef, useState } from 'react';
+import ItemIcon from '../common/ItemIcon';
+import { DurabilityBar, getToolMaxDurability } from '../common/DurabilityBar';
 import './mobileControls.css';
 
 export default function MobileControls() {
@@ -11,6 +13,7 @@ export default function MobileControls() {
   const toggleInventory = useGameStore((s) => s.toggleInventory);
   const setActiveSlot = useGameStore((s) => s.setActiveSlot);
   const hotbar = useGameStore((s) => s.hotbar);
+  const activeSlot = useGameStore((s) => s.activeSlot);
   const [joystick, setJoystick] = useState({ x: 0, y: 0, active: false });
   const [look, setLook] = useState({ x: 0, y: 0, active: false });
   const moveRef = useRef<{ id: number | null; cx: number; cy: number }>({ id: null, cx: 0, cy: 0 });
@@ -114,11 +117,24 @@ export default function MobileControls() {
         {hotbar.map((item, i) => (
           <button
             key={i}
-            className="hotbar-slot"
-            aria-label={`Hotbar ${i + 1}`}
+            role="option"
+            aria-selected={activeSlot === i}
+            aria-label={`Hotbar Slot ${i + 1}: ${item ? `${item.count} item${item.count > 1 ? 's' : ''}` : 'empty'}`}
+            className={`hotbar-slot ${activeSlot === i ? 'selected' : ''}`}
             onClick={() => setActiveSlot(i)}
           >
-            {item && <span className="stack-count">{item.count}</span>}
+            {item && (
+              <>
+                <ItemIcon blockId={item.blockId} size={28} />
+                <span className="stack-count">{item.count}</span>
+                {item.durability !== undefined && (
+                  <DurabilityBar
+                    durability={item.durability}
+                    maxDurability={getToolMaxDurability(item.blockId)}
+                  />
+                )}
+              </>
+            )}
           </button>
         ))}
       </div>

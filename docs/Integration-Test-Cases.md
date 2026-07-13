@@ -95,16 +95,15 @@ Validates off-loading geometry calculations to background threads using Transfer
 
 Validates custom AABB locomotion physics calculations.
 
-### Test Scenario: PH-001 - AABB Step-Climbing Transition
+### Test Scenario: PH-001 - AABB Step Collision & Jumping
 * **System Boundaries:** Physics locomotion loop ↔ Chunk block coordinate map.  
 * **Steps:**
   1. Place the player AABB box at coordinate `(1.0, 64.0, 1.0)`.
   2. Set block at `(2.0, 64.0, 1.0)` to Stone (1 block high).
   3. Move player velocity vector towards positive X.
   4. Run physics engine loop update.
+  5. Repeat step 3 and 4, but dispatch a jump request.
 * **Expected Result:**
-  - Player bounding box collides with block horizontally.
-  - Step height is checked: $1.0$ block exceeds step-climbing threshold ($\le 0.5$ blocks).
-  - Player horizontal movement is blocked (velocity along X goes to 0).
-  - Repeat the test with a half-block slab or slope ($\le 0.5$). Player automatically slides upward to `(2.0, 64.5, 1.0)` without collision blocking.
+  - In step 3-4, player bounding box collides with the block horizontally. Player horizontal movement is blocked (velocity along X goes to 0), and they do not auto-climb.
+  - In step 5, player jumps and successfully moves forward over the 1-block step.
 * **Partial Failure/Boundary Resilience:** If player stands near bedrock boundary (y = 0), collision boundaries lock movement in the negative Y axis (gravity constant terminates acceleration).

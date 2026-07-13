@@ -227,7 +227,7 @@ A unified settings dialog centered on the screen, blurring the gameplay backgrou
 |   +---------------------------+   |
 |   |       RESUME GAME         |   |
 |   +---------------------------+   |
-|   |    BACKUP WORLD (.json)   |   |
+|   |  BACKUP WORLD (.blockcraft) |   |
 |   +---------------------------+   |
 |   |     QUIT TO TITLE MENU    |   |
 |   +---------------------------+   |

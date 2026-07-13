@@ -32,14 +32,30 @@ export interface GameSettings {
   controlLayout: 'right-handed' | 'left-handed';
 }
 
+export type Screen = 'main-menu' | 'world-creation' | 'loading' | 'game' | 'paused';
+export type SlotKind = 'hotbar' | 'storage' | 'armor';
+
 export interface IGameState {
-  // --- Game Session State ---
+  // --- UI Screen State ---
+  screen: Screen;
   isPaused: boolean;
+  showInventory: boolean;
+  showSmelting: boolean;
+  showGameOver: boolean;
+  loadingProgress: number;
+  loadingStage: string;
+  generated: boolean;
+  pauseReason: 'manual' | 'health' | null;
+
+  // --- Game Session State ---
   activeWorldId: string | null;
+  worldName: string;
   worldSeed: number;
   worldSize: WorldSize;
   difficulty: Difficulty;
   timeOfDay: number;       // 0.0 to 24000.0 (representing tick hours)
+  dayCount: number;
+  lastSaveTick: number;
   
   // --- Player Attributes ---
   health: number;          // 0 to 20 (10 hearts)
@@ -58,28 +74,52 @@ export interface IGameState {
   settings: GameSettings;
 
   // --- Core Game Actions ---
-  startGame: (seed: number, size: WorldSize, diff: Difficulty) => void;
-  continueGame: (worldId: string) => Promise<void>;
+  setScreen: (screen: Screen) => void;
+  startGame: (params: {
+    worldId: string;
+    worldName: string;
+    seed: number;
+    size: WorldSize;
+    difficulty: Difficulty;
+    playerPos: [number, number, number];
+  }) => void;
+  continueGame: () => Promise<boolean>;
   togglePause: () => void;
+  setPause: (paused: boolean, reason?: 'manual' | 'health') => void;
   tickTime: (delta: number) => void;
 
   // --- Player Actions ---
   setHealth: (health: number) => void;
-  damagePlayer: (amount: number, source: string) => void;
+  damagePlayer: (amount: number, source?: string) => void;
   healPlayer: (amount: number) => void;
   adjustHunger: (amount: number) => void;
-  eatFood: (slotIndex: number) => void;
+  tickHunger: (deltaSeconds: number, difficulty: Difficulty) => void;
+  eatFood: (slotKind: SlotKind, slotIndex: number) => boolean;
+  setOxygen: (oxygen: number) => void;
+  tickOxygen: (deltaSeconds: number, isHeadUnderwater: boolean) => void;
   updatePlayerTransform: (pos: [number, number, number], rot: [number, number]) => void;
 
   // --- Inventory & Crafting Actions ---
   setActiveSlot: (slot: number) => void;
   addItemToInventory: (blockId: number, count: number) => boolean;
-  removeItemFromInventory: (slotIndex: number, slotType: 'hotbar' | 'storage' | 'armor', count: number) => void;
-  swapInventorySlots: (fromIdx: number, fromType: 'hotbar' | 'storage' | 'armor', toIdx: number, toType: 'hotbar' | 'storage' | 'armor') => void;
+  removeItemFromInventory: (slotKind: SlotKind, slotIndex: number, count: number) => void;
+  swapInventorySlots: (fromIdx: number, fromType: SlotKind, toIdx: number, toType: SlotKind) => void;
+  splitStack: (fromKind: SlotKind, fromIdx: number) => boolean;
   craftItem: (recipeId: string) => boolean;
+  smeltItem: (recipeId: string) => boolean;
+  applyDamageToTool: (slotKind: SlotKind, slotIndex: number, amount: number) => void;
+  openSmelting: (open?: boolean) => void;
 
   // --- Settings Actions ---
-  updateSettings: (newSettings: Partial<GameSettings>) => void;
+  updateSettings: (patch: Partial<GameSettings>) => void;
+
+  // --- Misc Helpers ---
+  setLoading: (progress: number, stage: string) => void;
+  setGenerated: (v: boolean) => void;
+  toggleInventory: (open?: boolean) => void;
+  respawn: () => void;
+  quitToMenu: () => void;
+  markSaved: () => number;
 }
 ```
 
@@ -89,13 +129,14 @@ export interface IGameState {
 
 All core modules are instantiated as classes or functional units implementing clear TypeScript interfaces to guarantee testability and test mocks compatibility.
 
-### 2.1. Terrain Subsystem (`ITerrainGenerator`)
+### 2.1. Terrain Subsystem (`TerrainGenerator`)
 
 Responsible for height calculations, block mapping, and cave configurations.
 
 ```typescript
-export interface ITerrainGenerator {
+export interface TerrainGenerator {
   seed: number;
+  worldSize: number;
   
   /**
    * Generates heightmap value for a 2D coordinate.
@@ -116,9 +157,9 @@ export interface ITerrainGenerator {
 }
 ```
 
-### 2.2. Physics Engine (`IPhysicsEngine`)
+### 2.2. Physics Engine
 
-Provides step-climbing, velocity decay, and AABB calculations.
+Provides step-climbing detection (disabled/unimplemented), velocity decay, and AABB calculations.
 
 ```typescript
 export interface AABB {
@@ -126,75 +167,70 @@ export interface AABB {
   max: [number, number, number];
 }
 
-export interface IPhysicsEngine {
-  gravityConstant: number;
-  terminalVelocity: number;
-
-  /**
-   * Computes the bounding box collision displacement relative to the solid voxel neighborhood.
-   * Modifies velocity and returns updated movement coords.
-   */
-  updateEntityPosition: (
-    entityPos: [number, number, number],
-    entityVel: [number, number, number],
-    entityAABB: AABB,
-    deltaTime: number,
-    getBlockAt: (x: number, y: number, z: number) => number
-  ) => {
-    newPos: [number, number, number];
-    newVel: [number, number, number];
-    isOnGround: boolean;
-  };
+export interface PhysicsResult {
+  newPos: [number, number, number];
+  newVel: [number, number, number];
+  isOnGround: boolean;
+  inLiquid: boolean;
 }
+
+export interface MoveOpts {
+  inLiquidOverride?: boolean;
+  jumpRequested?: boolean;
+  jumpHeld?: boolean;
+}
+
+// Function signature exported from collision.ts
+export function updateEntityPosition(
+  pos: [number, number, number],
+  vel: [number, number, number],
+  aabbSize: [number, number], // [width, height]
+  dt: number,
+  getBlock: (x: number, y: number, z: number) => number,
+  opts?: MoveOpts
+): PhysicsResult;
 ```
 
-### 2.3. Save Manager (`ISaveManager`)
+### 2.3. Save Manager
 
-Manages backup files formats and IndexedDB storage tasks.
+The save manager is implemented as a set of functions in `src/game/save/saveManager.ts`. It manages IndexedDB world tables and compressed backups.
 
 ```typescript
 export interface SaveBackupFormat {
   version: string;
   metadata: {
     worldId: string;
+    worldName: string;
     seed: number;
     size: number;
     difficulty: string;
     time: number;
+    dayCount: number;
     player: {
       position: [number, number, number];
       rotation: [number, number];
       health: number;
       hunger: number;
+      oxygen: number;
     };
   };
   inventory: {
     hotbar: (InventoryItem | null)[];
     storage: (InventoryItem | null)[];
+    armor: (InventoryItem | null)[];
+    activeSlot: number;
   };
-  chunkDeltas: {
-    // Key format: 'chunkX,chunkY,chunkZ'
-    // Value format: Array of [blockIndexWithinChunk, newBlockId]
-    [chunkKey: string]: [number, number][];
-  };
+  chunkDeltas: Record<string, [number, number][]>;
 }
 
-export interface ISaveManager {
-  /**
-   * Asynchronously serializes the active state and writes modifications to IndexedDB.
-   */
-  autosave: () => Promise<void>;
-
-  /**
-   * Pulls IndexedDB state, bundles into compressed SaveBackupFormat and downloads it.
-   */
-  exportWorldSave: (worldId: string) => Promise<Blob>;
-
-  /**
-   * Accepts a backup blob file, validates version and schemas, then writes to IndexedDB.
-   */
-  importWorldSave: (fileData: SaveBackupFormat) => Promise<string>; // Returns imported worldId
-}
+// Key functions exported from saveManager.ts
+export function initSaveManager(): Promise<void>;
+export function saveCurrentWorldNow(): Promise<void>;
+export function listWorlds(): Promise<WorldMetadataRecord[]>;
+export function loadWorld(worldId: string): Promise<boolean>;
+export function deleteWorld(worldId: string): Promise<void>;
+export function exportWorldSave(worldId: string): Promise<Blob>;
+export function importWorldSave(fileData: SaveBackupFormat): Promise<string>;
 ```
 
 ---
