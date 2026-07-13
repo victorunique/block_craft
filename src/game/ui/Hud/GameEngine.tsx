@@ -29,6 +29,8 @@ function Player({ chunkManager, spawner, getHeight, getBiome }: { chunkManager: 
   const updatePlayerTransform = useGameStore((s) => s.updatePlayerTransform);
   const isPaused = useGameStore((s) => s.isPaused);
   const screen = useGameStore((s) => s.screen);
+  const showInventory = useGameStore((s) => s.showInventory);
+  const showSmelting = useGameStore((s) => s.showSmelting);
   const setActiveSlot = useGameStore((s) => s.setActiveSlot);
   const activeSlot = useGameStore((s) => s.activeSlot);
   const settings = useSettingsStore((s) => s.settings);
@@ -88,13 +90,26 @@ function Player({ chunkManager, spawner, getHeight, getBiome }: { chunkManager: 
   useEffect(() => {
     const isTesting = typeof navigator !== 'undefined' && navigator.webdriver;
     if (isTesting) return;
-    if (screen !== 'game' || isPaused) return;
+    if (screen !== 'game' || isPaused || showInventory || showSmelting) {
+      if (document.pointerLockElement) {
+        try {
+          document.exitPointerLock();
+        } catch (e) {
+          // ignore
+        }
+      }
+      return;
+    }
     const canvas = gl.domElement;
     const tryLock = () => {
       if (document.pointerLockElement !== canvas) {
-        const req = canvas.requestPointerLock();
-        if (req && typeof (req as Promise<void>).catch === 'function') {
-          (req as Promise<void>).catch(() => { /* user-gesture may not be available */ });
+        try {
+          const req = canvas.requestPointerLock();
+          if (req && typeof (req as Promise<void>).catch === 'function') {
+            (req as Promise<void>).catch(() => { /* user-gesture may not be available */ });
+          }
+        } catch (e) {
+          // ignore
         }
       }
     };
@@ -104,7 +119,7 @@ function Player({ chunkManager, spawner, getHeight, getBiome }: { chunkManager: 
       clearTimeout(timer);
       canvas.removeEventListener('click', tryLock);
     };
-  }, [gl, screen, isPaused]);
+  }, [gl, screen, isPaused, showInventory, showSmelting]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -956,6 +971,11 @@ export default function GameEngine({ chunkManager, spawner }: Props) {
   const worldSeed = useGameStore((s) => s.worldSeed);
   const worldSize = useGameStore((s) => s.worldSize);
   const settings = useSettingsStore((s) => s.settings);
+  const isPaused = useGameStore((s) => s.isPaused);
+  const showInventory = useGameStore((s) => s.showInventory);
+  const showSmelting = useGameStore((s) => s.showSmelting);
+  const screen = useGameStore((s) => s.screen);
+
   const setRenderDistance = (distance: number) => chunkManager.setRenderDistance(distance);
   useEffect(() => {
     setRenderDistance(settings.renderDistance);
@@ -980,7 +1000,7 @@ export default function GameEngine({ chunkManager, spawner }: Props) {
       <ChunkUpdater chunkManager={chunkManager} />
       <EntityRunner spawner={spawner} chunkManager={chunkManager} />
       <GameTick />
-      <PointerLockControls />
+      {screen === 'game' && !isPaused && !showInventory && !showSmelting && <PointerLockControls />}
     </Canvas>
   );
 }

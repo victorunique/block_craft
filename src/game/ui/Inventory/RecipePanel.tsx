@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 import { RECIPES } from '../../crafting/recipes';
 import { countItem } from '../../inventory/slots';
 import { audio } from '../../audio/audioManager';
+import { BLOCK_NAMES } from '../../../config/blocks';
 import './recipePanel.css';
 
 export default function RecipePanel() {
@@ -76,7 +77,7 @@ export default function RecipePanel() {
                 const ok = owned >= ing.count;
                 return (
                   <div key={ing.blockId} className={`ingredient ${ok ? 'ok' : 'missing'}`}>
-                    <span>{ing.blockId} x{ing.count}</span>
+                    <span>{BLOCK_NAMES[ing.blockId] ?? ing.blockId} x{ing.count}</span>
                     <span className="ing-count">{owned}/{ing.count}</span>
                   </div>
                 );
