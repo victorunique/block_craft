@@ -25,6 +25,9 @@
     "three": "^0.160.0",
     "zustand": "^4.5.2"
   },
+  "overrides": {
+    "three-mesh-bvh": "^0.8.0"
+  },
   "devDependencies": {
     "@playwright/test": "^1.44.1",
     "@testing-library/jest-dom": "^6.4.6",
