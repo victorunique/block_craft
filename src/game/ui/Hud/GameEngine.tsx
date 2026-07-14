@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { PointerLockControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from '../../store/gameStore';
 import { useInputStore } from '../../store/inputStore';
@@ -115,9 +114,11 @@ function Player({ chunkManager, spawner, getHeight, getBiome }: { chunkManager: 
     };
     const timer = setTimeout(tryLock, 60);
     canvas.addEventListener('click', tryLock);
+    canvas.addEventListener('mousedown', tryLock);
     return () => {
       clearTimeout(timer);
       canvas.removeEventListener('click', tryLock);
+      canvas.removeEventListener('mousedown', tryLock);
     };
   }, [gl, screen, isPaused, showInventory, showSmelting]);
 
@@ -1000,7 +1001,6 @@ export default function GameEngine({ chunkManager, spawner }: Props) {
       <ChunkUpdater chunkManager={chunkManager} />
       <EntityRunner spawner={spawner} chunkManager={chunkManager} />
       <GameTick />
-      {screen === 'game' && !isPaused && !showInventory && !showSmelting && <PointerLockControls />}
     </Canvas>
   );
 }

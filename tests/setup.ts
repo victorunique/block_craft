@@ -81,3 +81,25 @@ console.error = (...args) => {
   }
   originalError(...args);
 };
+
+if (typeof window !== 'undefined') {
+  HTMLCanvasElement.prototype.toDataURL = function () {
+    return 'data:image/png;base64,';
+  };
+  HTMLCanvasElement.prototype.getContext = function (type: string) {
+    if (type === '2d') {
+      return {
+        imageSmoothingEnabled: false,
+        fillStyle: '',
+        fillRect: () => {},
+        clearRect: () => {},
+        drawImage: () => {},
+        putImageData: () => {},
+        getImageData: () => ({ data: new Uint8ClampedArray(0) }),
+        createImageData: () => ({ data: new Uint8ClampedArray(0) }),
+        canvas: this,
+      } as any;
+    }
+    return null;
+  } as any;
+}

@@ -134,7 +134,7 @@ export class ChunkManager {
 
   getBlockAt(x: number, y: number, z: number, treatUnloadedAsSolid = false): number {
     const half = this.worldSize / 2;
-    if (x < -half || x >= half || z < -half || z >= half) return 0;
+    if (x < -half || x >= half || z < -half || z >= half) return treatUnloadedAsSolid ? BlockId.BEDROCK : 0;
     if (y < BEDROCK_LEVEL || y >= WORLD_DEPTH) return 0;
     const { cx, cy, cz } = this.worldToChunk(x, y, z);
     const entry = this.chunks.get(this.key(cx, cy, cz));

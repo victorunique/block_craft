@@ -31,6 +31,21 @@ describe('ChunkManager getBlockAt', () => {
     // Querying coordinate (0, 60, 0) inside an unloaded chunk with treatUnloadedAsSolid = true
     expect(cm.getBlockAt(0, 60, 0, true)).toBe(BlockId.BEDROCK);
   });
+
+  it('returns BlockId.BEDROCK when treatUnloadedAsSolid is true for out-of-bounds coords', () => {
+    const cm = new ChunkManager({
+      seed: 42,
+      worldSize: 256,
+      renderDistance: 2,
+      worker: mockWorker,
+    });
+    // Querying out of bounds (-129, 60, 0) with treatUnloadedAsSolid = true
+    expect(cm.getBlockAt(-129, 60, 0, true)).toBe(BlockId.BEDROCK);
+    // Querying out of bounds (128, 60, 0) with treatUnloadedAsSolid = true
+    expect(cm.getBlockAt(128, 60, 0, true)).toBe(BlockId.BEDROCK);
+    // Querying out of bounds (-129, 60, 0) with treatUnloadedAsSolid = false should return 0 (Air)
+    expect(cm.getBlockAt(-129, 60, 0, false)).toBe(0);
+  });
 });
 
 describe('ChunkManager mesh compilation concurrency', () => {

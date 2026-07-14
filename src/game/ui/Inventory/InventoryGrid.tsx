@@ -4,6 +4,7 @@ import { dragDrop } from '../../inventory/dragDrop';
 import type { InventoryItem } from '../../inventory/slots';
 import ItemIcon from '../common/ItemIcon';
 import { DurabilityBar, getToolMaxDurability } from '../common/DurabilityBar';
+import { BLOCK_NAMES } from '../../../config/blocks';
 import './inventoryGrid.css';
 
 interface Props {
@@ -89,6 +90,7 @@ export default function InventoryGrid({ onCursorChange }: Props) {
       onClick={onSlotClick(kind, index)}
       role={role}
       aria-label={ariaLabel}
+      title={it ? (BLOCK_NAMES[it.blockId] || 'Unknown Block') : undefined}
     >
       {it && (
         <>

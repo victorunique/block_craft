@@ -122,7 +122,7 @@ test('smeltItem action exists and the smelting dialog can be opened', async ({ p
   await page.waitForTimeout(300);
 
   await expect(page.locator('.smelt-overlay')).toBeVisible();
-  await expect(page.locator('.smelt-recipe')).toHaveCount(4); // glass, brick, iron_ingot, gold_ingot
+  await expect(page.locator('.smelt-recipe')).toHaveCount(7); // glass, brick, iron_ingot, gold_ingot, steak, porkchop, chicken
 
   // Close
   await page.locator('.smelt-close').click({ force: true });

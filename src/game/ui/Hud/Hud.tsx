@@ -89,7 +89,10 @@ function Hotbar() {
           aria-selected={activeSlot === i}
           aria-label={`Hotbar Slot ${i + 1}: ${item ? `${item.count} item${item.count > 1 ? 's' : ''}` : 'empty'}`}
           className={`item-slot ${activeSlot === i ? 'selected' : ''}`}
-          onClick={() => setActiveSlot(i)}
+          onClick={(e) => {
+            setActiveSlot(i);
+            e.currentTarget.blur();
+          }}
         >
           {item && (
             <>
