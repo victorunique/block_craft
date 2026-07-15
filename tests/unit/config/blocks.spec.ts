@@ -29,6 +29,26 @@ describe('Block Registry', () => {
     expect(isBlockStackable(BlockId.WOODEN_PICKAXE)).toBe(false);
     expect(getMaxStack(BlockId.STONE)).toBe(BLOCK_STACK_MAX);
     expect(getMaxStack(BlockId.WOODEN_PICKAXE)).toBe(1);
+
+    // Food and item drops should be stackable
+    expect(isBlockStackable(BlockId.FEATHER)).toBe(true);
+    expect(getMaxStack(BlockId.FEATHER)).toBe(BLOCK_STACK_MAX);
+    expect(isBlockStackable(BlockId.CHICKEN)).toBe(true);
+    expect(getMaxStack(BlockId.CHICKEN)).toBe(BLOCK_STACK_MAX);
+    expect(isBlockStackable(BlockId.BEEF)).toBe(true);
+    expect(getMaxStack(BlockId.BEEF)).toBe(BLOCK_STACK_MAX);
+    expect(isBlockStackable(BlockId.PORK)).toBe(true);
+    expect(getMaxStack(BlockId.PORK)).toBe(BLOCK_STACK_MAX);
+    expect(isBlockStackable(BlockId.LEATHER)).toBe(true);
+    expect(getMaxStack(BlockId.LEATHER)).toBe(BLOCK_STACK_MAX);
+    expect(isBlockStackable(BlockId.APPLE)).toBe(true);
+    expect(getMaxStack(BlockId.APPLE)).toBe(BLOCK_STACK_MAX);
+    expect(isBlockStackable(BlockId.COOKED_BEEF)).toBe(true);
+    expect(getMaxStack(BlockId.COOKED_BEEF)).toBe(BLOCK_STACK_MAX);
+    expect(isBlockStackable(BlockId.COOKED_PORK)).toBe(true);
+    expect(getMaxStack(BlockId.COOKED_PORK)).toBe(BLOCK_STACK_MAX);
+    expect(isBlockStackable(BlockId.COOKED_CHICKEN)).toBe(true);
+    expect(getMaxStack(BlockId.COOKED_CHICKEN)).toBe(BLOCK_STACK_MAX);
   });
 
   it('light emissions', () => {

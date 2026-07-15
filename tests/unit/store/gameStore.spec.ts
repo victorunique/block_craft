@@ -118,6 +118,15 @@ describe('IGameState — inventory & crafting', () => {
     expect(stoneTotal).toBe(70);
   });
 
+  it('addItemToInventory stacks feathers in a single slot', () => {
+    useGameStore.getState().addItemToInventory(BlockId.FEATHER, 1);
+    useGameStore.getState().addItemToInventory(BlockId.FEATHER, 1);
+    const s = useGameStore.getState();
+    const featherSlots = [...s.hotbar, ...s.storage].filter((it) => it !== null && it.blockId === BlockId.FEATHER);
+    expect(featherSlots.length).toBe(1);
+    expect(featherSlots[0]?.count).toBe(2);
+  });
+
   it('addItemToInventory returns false when full and does not lose items', () => {
     for (let i = 0; i < 36; i++) useGameStore.getState().addItemToInventory(BlockId.STONE, 64);
     const before = [...useGameStore.getState().hotbar, ...useGameStore.getState().storage].filter((it) => it?.blockId === BlockId.STONE).reduce((a, it) => a + (it?.count ?? 0), 0);

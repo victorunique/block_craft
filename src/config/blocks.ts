@@ -200,7 +200,6 @@ export const BLOCK_STACK_MAX = 64;
 
 export function isBlockStackable(blockId: number): boolean {
   if (blockId >= BlockId.TOOL_BASE && blockId < BlockId.FOOD_BASE) return false;
-  if (blockId >= BlockId.FOOD_BASE) return false;
   return true;
 }
 
