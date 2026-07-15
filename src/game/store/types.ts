@@ -48,8 +48,10 @@ export interface IGameState {
   generated: boolean;
   pauseReason: 'manual' | 'health' | null;
   swingProgress: number;
+  showTutorialOverlay: boolean;
 
   setScreen: (screen: Screen) => void;
+  setShowTutorialOverlay: (show: boolean) => void;
   triggerSwing: () => void;
   startGame: (params: {
     worldId: string;

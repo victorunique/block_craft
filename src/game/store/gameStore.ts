@@ -72,8 +72,10 @@ export const useGameStore = create<IGameState>((set, get) => ({
   generated: false,
   pauseReason: null,
   swingProgress: 0,
+  showTutorialOverlay: true,
 
   setScreen: (screen) => set({ screen }),
+  setShowTutorialOverlay: (show) => set({ showTutorialOverlay: show }),
   triggerSwing: () => set({ swingProgress: 1.0 }),
 
   startGame: ({ worldId, worldName, seed, size, difficulty, playerPos }) => {
@@ -106,6 +108,7 @@ export const useGameStore = create<IGameState>((set, get) => ({
       loadingProgress: 0,
       loadingStage: 'Sculpting hills...',
       generated: false,
+      showTutorialOverlay: true,
     });
   },
 
@@ -399,6 +402,7 @@ export const useGameStore = create<IGameState>((set, get) => ({
       showSmelting: false,
       showGameOver: false,
       pauseReason: null,
+      showTutorialOverlay: true,
     });
   },
 

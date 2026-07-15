@@ -154,6 +154,8 @@ export default function Hud() {
     return () => cancelAnimationFrame(raf);
   }, []);
 
+  const showTutorialOverlay = useGameStore((s) => s.showTutorialOverlay);
+
   const biome = getBiomeName(playerPos[0], playerPos[2]);
 
   return (
@@ -163,6 +165,11 @@ export default function Hud() {
         <div className="biome-label">{biome}</div>
       </div>
       <div className="hud-top-right">
+        {!showTutorialOverlay && (
+          <div className="pos-counter">
+            Pos: {Math.round(playerPos[0])}, {Math.round(playerPos[1])}, {Math.round(playerPos[2])}
+          </div>
+        )}
         <div className="fps-counter">{fps} FPS</div>
         {viewport.isMobile && (
           <div className="top-actions">

@@ -53,7 +53,7 @@
   pointer-events: auto;
 }
 
-.fps-counter {
+.fps-counter, .pos-counter {
   background: rgba(0, 0, 0, 0.4);
   color: var(--color-text-white);
   padding: var(--sp-2) var(--sp-3);

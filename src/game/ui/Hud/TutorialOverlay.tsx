@@ -7,11 +7,21 @@ export default function TutorialOverlay() {
   const showGameOver = useGameStore((s) => s.showGameOver);
   const showInventory = useGameStore((s) => s.showInventory);
   const isPaused = useGameStore((s) => s.isPaused);
-  if (health <= 0 || showGameOver || showInventory || isPaused) return null;
+  const showTutorialOverlay = useGameStore((s) => s.showTutorialOverlay);
+  const setShowTutorialOverlay = useGameStore((s) => s.setShowTutorialOverlay);
+
+  if (health <= 0 || showGameOver || showInventory || isPaused || !showTutorialOverlay) return null;
   const [x, y, z] = playerPos;
   return (
     <div className="tutorial-overlay" role="status" aria-live="polite">
       <div className="tutorial-card">
+        <button
+          className="tutorial-close-btn"
+          onClick={() => setShowTutorialOverlay(false)}
+          aria-label="Close tutorial"
+        >
+          ✕
+        </button>
         <div className="tutorial-step">
           <div className="tutorial-icon">▶</div>
           <div className="tutorial-text">

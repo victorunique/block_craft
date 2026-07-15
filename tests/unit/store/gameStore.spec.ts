@@ -46,6 +46,7 @@ beforeEach(() => {
     lastSaveTick: 0,
     generated: false,
     pauseReason: null,
+    showTutorialOverlay: true,
   });
 });
 
@@ -289,6 +290,31 @@ describe('IGameState — screen and pause', () => {
     expect(s.showGameOver).toBe(false);
     expect(s.screen).toBe('game');
     expect(s.hunger).toBeGreaterThan(0);
+  });
+
+  it('handles showTutorialOverlay state and actions', () => {
+    // 1. Defaults to true (in types/state)
+    expect(useGameStore.getState().showTutorialOverlay).toBe(true);
+
+    // 2. setShowTutorialOverlay can toggle it
+    useGameStore.getState().setShowTutorialOverlay(false);
+    expect(useGameStore.getState().showTutorialOverlay).toBe(false);
+
+    // 3. startGame resets showTutorialOverlay to true
+    useGameStore.getState().startGame({
+      worldId: 'new-world',
+      worldName: 'My New World',
+      seed: 42,
+      size: 256,
+      difficulty: 'easy',
+      playerPos: [10, 80, 10],
+    });
+    expect(useGameStore.getState().showTutorialOverlay).toBe(true);
+
+    // 4. quitToMenu resets showTutorialOverlay to true
+    useGameStore.getState().setShowTutorialOverlay(false);
+    useGameStore.getState().quitToMenu();
+    expect(useGameStore.getState().showTutorialOverlay).toBe(true);
   });
 });
 

@@ -15,6 +15,7 @@
 }
 
 .tutorial-card {
+  position: relative;
   background: var(--color-bg-overlay);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -26,7 +27,7 @@
   gap: 8px;
   box-shadow: var(--shadow-medium);
   max-width: 360px;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .tutorial-step {
@@ -90,4 +91,33 @@
   border-bottom-width: 2px;
   border-radius: 4px;
   margin: 0 2px;
+}
+
+.tutorial-close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--color-text-main);
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, transform 0.1s;
+  pointer-events: auto;
+  padding: 0;
+  line-height: 1;
+}
+
+.tutorial-close-btn:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.tutorial-close-btn:active {
+  transform: scale(0.95);
 }
