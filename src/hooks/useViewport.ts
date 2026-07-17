@@ -24,6 +24,6 @@ function compute(): ViewportInfo {
   const width = window.innerWidth;
   const height = window.innerHeight;
   const isTouch = 'ontouchstart' in window || (navigator as any).maxTouchPoints > 0;
-  const isMobile = width < 768 || (isTouch && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent));
+  const isMobile = width < 768 || isTouch;
   return { width, height, isMobile, isTouch };
 }
